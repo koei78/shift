@@ -8,13 +8,25 @@
   <style>
     :root {
       --topbar-height: 40px;
+      --accent:       #6366f1;
+      --accent-dark:  #4f46e5;
+      --accent-light: #eef2ff;
+      --success:      #10b981;
+      --warning:      #f59e0b;
+      --danger:       #ef4444;
+      --info:         #3b82f6;
+      --sidebar-bg1:  #1e1b4b;
+      --sidebar-bg2:  #1e293b;
+      --text:         #1e293b;
+      --bg:           #f0f4ff;
+      --border:       #e2e8f0;
     }
 
     body {
       font-family: system-ui, "Noto Sans JP", sans-serif;
       margin: 0;
-      background: #f0f2f5;
-      color: #0b1220;
+      background: var(--bg);
+      color: var(--text);
     }
 
     a {
@@ -33,9 +45,9 @@
       position: sticky;
       top: 0;
       z-index: 20;
-      background: #1e293b;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      border-bottom: 1px solid #a3c9f1;
+      background: linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%);
+      box-shadow: 0 2px 8px rgba(79,70,229,0.35);
+      border-bottom: 1px solid #6366f1;
       height: var(--topbar-height);
     }
 
@@ -55,7 +67,7 @@
     }
 
     .nav-top .brand i {
-      color: #ffffff;
+      color: #a5b4fc;
     }
 
     .nav-top-right {
@@ -79,8 +91,8 @@
 
     .sidebar {
       width: 100%;
-      background: #1e293b;
-      border-right: 1px solid #0f172a;
+      background: linear-gradient(180deg, #1e1b4b 0%, #1a2744 100%);
+      border-right: 1px solid #312e81;
       padding: 12px 10px;
       display: flex;
       flex-direction: column;
@@ -126,31 +138,48 @@
       align-items: center;
       gap: 8px;
       padding: 9px 11px;
-      border-radius: 4px;
-      color: #ffffff;
-      font-size: 17px;
+      border-radius: 6px;
+      color: #c7d2fe;
+      font-size: 14px;
       line-height: 1.25;
+      transition: background 0.15s, color 0.15s;
     }
 
     .nav-item span {
-      color: #ffffff;
+      color: #c7d2fe;
     }
 
     .nav-item i {
       width: 18px;
       text-align: center;
-      color: #ffffff;
-      font-size: 16px;
+      font-size: 14px;
+      opacity: 0.9;
     }
+
+    /* アイコン色（ナビ項目ごと） */
+    .nav-icon-blue   i { color: #60a5fa; }
+    .nav-icon-green  i { color: #34d399; }
+    .nav-icon-yellow i { color: #fbbf24; }
+    .nav-icon-purple i { color: #a78bfa; }
+    .nav-icon-red    i { color: #f87171; }
+    .nav-icon-sky    i { color: #38bdf8; }
+    .nav-icon-orange i { color: #fb923c; }
+    .nav-icon-pink   i { color: #e879f9; }
+    .nav-icon-gray   i { color: #94a3b8; }
 
     .nav-item:hover {
-      background: #334155;
+      background: rgba(99,102,241,0.18);
+      color: #ffffff;
     }
+    .nav-item:hover span { color: #ffffff; }
 
     .nav-item.active {
-      background: #2563eb;
-      border: 1px solid transparent;
+      background: #6366f1;
+      border: none;
+      color: #ffffff;
     }
+    .nav-item.active span { color: #ffffff; }
+    .nav-item.active i { color: #ffffff !important; opacity: 1; }
 
     .logout-link {
       margin-top: auto;
@@ -160,11 +189,11 @@
     .user-box {
       margin-top: 6px;
       padding: 8px 10px;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      background: #334155;
+      border: 1px solid #312e81;
+      border-radius: 6px;
+      background: rgba(99,102,241,0.15);
       font-size: 13px;
-      color: #e9f2ff;
+      color: #c7d2fe;
       overflow: hidden;
       width: 90%;
       line-height: 1.2;
@@ -176,10 +205,11 @@
       overflow: hidden;
       text-overflow: ellipsis;
       text-align: left;
+      color: #e0e7ff;
     }
 
     .user-role {
-      color: #c6d5f0;
+      color: #818cf8;
       font-size: 12px;
       white-space: nowrap;
       overflow: hidden;
@@ -206,11 +236,18 @@
     textarea {
       width: 100%;
       padding: 10px;
-      border-radius: 4px;
-      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      border: 1px solid #c7d2fe;
       background: #ffffff;
-      color: #0b1220;
+      color: #1e293b;
       box-sizing: border-box;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
     }
 
     .row {
@@ -225,11 +262,25 @@
       border-collapse: collapse;
     }
 
-    .table th,
+    .table th {
+      background: #eef2ff;
+      color: #4338ca;
+      font-weight: 700;
+      border-bottom: 2px solid #c7d2fe;
+      padding: 10px;
+      vertical-align: top;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+    }
+
     .table td {
       border-bottom: 1px solid #eef3f8;
       padding: 10px;
       vertical-align: top;
+    }
+
+    .table tr:hover td {
+      background: #f8f8ff;
     }
 
     .muted {
@@ -238,35 +289,41 @@
     }
 
     .flash {
-      background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      padding: 10px;
-      border-radius: 4px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-left: 4px solid #3b82f6;
+      padding: 10px 14px;
+      border-radius: 6px;
       margin: 10px 0;
-      color: #334155;
+      color: #1e40af;
+      font-size: 14px;
     }
 
     .card {
       background: #ffffff;
-      border: 1px solid #d1d9e6;
-      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
       padding: 16px;
       margin: 12px 0;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 8px rgba(99,102,241,0.07), 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .card h2, .card h3 {
+      color: #1e1b4b;
     }
 
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 10px 12px;
-      border-radius: 4px;
-      border: 1px solid #cbd5e1;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
       background: #ffffff;
-      color: #0b1220;
-      font-weight: 700;
-      font-size: 14px;
+      color: #374151;
+      font-weight: 600;
+      font-size: 13px;
       line-height: 1;
       cursor: pointer;
       user-select: none;
@@ -275,24 +332,54 @@
     }
 
     .btn:hover {
-      background: #f8fafc;
-      border-color: #94a3b8;
+      background: #f0f4ff;
+      border-color: #a5b4fc;
     }
 
     .btn:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.18);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.2);
     }
 
     .btn.primary {
-      background: #0f172a;
-      border-color: #0f172a;
+      background: #6366f1;
+      border-color: #6366f1;
       color: #ffffff;
     }
 
     .btn.primary:hover {
-      background: #1a5fd0;
-      border-color: #1a5fd0;
+      background: #4f46e5;
+      border-color: #4f46e5;
+    }
+
+    .btn.success {
+      background: #10b981;
+      border-color: #10b981;
+      color: #ffffff;
+    }
+    .btn.success:hover {
+      background: #059669;
+      border-color: #059669;
+    }
+
+    .btn.danger {
+      background: #ef4444;
+      border-color: #ef4444;
+      color: #ffffff;
+    }
+    .btn.danger:hover {
+      background: #dc2626;
+      border-color: #dc2626;
+    }
+
+    .btn.warning {
+      background: #f59e0b;
+      border-color: #f59e0b;
+      color: #ffffff;
+    }
+    .btn.warning:hover {
+      background: #d97706;
+      border-color: #d97706;
     }
 
     .btn[disabled],
@@ -302,26 +389,42 @@
       pointer-events: none;
     }
 
+    /* バッジ */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+    .badge-green  { background: #d1fae5; color: #065f46; }
+    .badge-yellow { background: #fef3c7; color: #92400e; }
+    .badge-red    { background: #fee2e2; color: #991b1b; }
+    .badge-purple { background: #ede9fe; color: #5b21b6; }
+    .badge-gray   { background: #f1f5f9; color: #475569; }
+
     .icon-btn {
       width: 34px;
       height: 34px;
-      border: 1px solid #a3c9f1;
-      border-radius: 4px;
+      border: 1px solid #c7d2fe;
+      border-radius: 6px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       background: transparent;
-      color: #000;
+      color: #6366f1;
       cursor: pointer;
+      transition: background 0.15s;
     }
 
     .icon-btn i {
       font-size: 14px;
-      color: #000;
+      color: #6366f1;
     }
 
     .icon-btn:hover {
-      background: #e2f0ff;
+      background: #eef2ff;
     }
 
     /* Mobile Responsive: bottom bar and drawer */
@@ -347,9 +450,9 @@
         left: 0;
         width: 100%;
         background: #ffffff;
-        border-top: 1px solid #e2e8f0;
+        border-top: 2px solid #eef2ff;
         z-index: 1000;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        box-shadow: 0 -2px 10px rgba(99,102,241,0.1);
       }
       .mobile-bottom-bar a, .mobile-bottom-bar button {
         display: flex;
@@ -357,17 +460,17 @@
         align-items: center;
         justify-content: center;
         padding: 10px 0;
-        color: #64748b;
+        color: #94a3b8;
         font-size: 11px;
         text-decoration: none;
         background: none;
         border: none;
         cursor: pointer;
-        padding-bottom: constant(safe-area-inset-bottom); /* iOS safe area */
+        padding-bottom: constant(safe-area-inset-bottom);
         padding-bottom: env(safe-area-inset-bottom);
       }
       .mobile-bottom-bar a.active, .mobile-bottom-bar button.active {
-        color: #2563eb;
+        color: #6366f1;
       }
       .mobile-bottom-bar i {
         font-size: 20px;
@@ -426,7 +529,7 @@
       .mobile-drawer .drawer-header h3 {
         margin: 0;
         font-size: 16px;
-        color: #0f172a;
+        color: #1e1b4b;
       }
       .mobile-drawer .drawer-item {
         display: flex;
@@ -441,11 +544,11 @@
         width: 24px;
         margin-right: 12px;
         font-size: 18px;
-        color: #64748b;
+        color: #6366f1;
         text-align: center;
       }
       .mobile-drawer .drawer-item:active {
-        background: #f1f5f9;
+        background: #f0f4ff;
       }
     }
   </style>
@@ -462,21 +565,21 @@
   {% if user %}
     <nav class="sidebar">
       <ul class="nav-list">
-        <li><a class="nav-item {% if request.endpoint=='dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><i class="fa-solid fa-user"></i><span>個人ページ</span></a></li>
-        <li><a class="nav-item {% if request.endpoint=='team' %}active{% endif %}" href="{{ url_for('team') }}"><i class="fa-solid fa-users"></i><span>チーム一覧</span></a></li>
-        <li><a class="nav-item {% if 'project' in request.endpoint %}active{% endif %}" href="{{ url_for('projects') }}"><i class="fa-solid fa-briefcase"></i><span>案件管理</span></a></li>
-        <li><a class="nav-item {% if request.endpoint=='shift_submit' %}active{% endif %}" href="{{ url_for('shift_submit') }}"><i class="fa-solid fa-calendar-check"></i><span>シフト提出</span></a></li>
-        <li><a class="nav-item {% if 'task' in request.endpoint %}active{% endif %}" href="{{ url_for('tasks') }}"><i class="fa-solid fa-list-check"></i><span>タスク</span></a></li>
-        <li><a class="nav-item" href="#"><i class="fa-solid fa-gear"></i><span>設定</span></a></li>
-        <li><a class="nav-item {% if request.endpoint=='shift_team' %}active{% endif %}" href="{{ url_for('shift_team') }}"><i class="fa-solid fa-people-group"></i><span>シフト確認</span></a></li>
-        <li><a class="nav-item {% if request.endpoint=='schedules' %}active{% endif %}" href="{{ url_for('schedules') }}"><i class="fa-solid fa-calendar"></i><span>スケジュール</span></a></li>
+        <li><a class="nav-item nav-icon-blue {% if request.endpoint=='dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><i class="fa-solid fa-user"></i><span>個人ページ</span></a></li>
+        <li><a class="nav-item nav-icon-green {% if request.endpoint=='team' %}active{% endif %}" href="{{ url_for('team') }}"><i class="fa-solid fa-users"></i><span>チーム一覧</span></a></li>
+        <li><a class="nav-item nav-icon-yellow {% if 'project' in request.endpoint %}active{% endif %}" href="{{ url_for('projects') }}"><i class="fa-solid fa-briefcase"></i><span>案件管理</span></a></li>
+        <li><a class="nav-item nav-icon-purple {% if request.endpoint=='shift_submit' %}active{% endif %}" href="{{ url_for('shift_submit') }}"><i class="fa-solid fa-calendar-check"></i><span>シフト提出</span></a></li>
+        <li><a class="nav-item nav-icon-red {% if 'task' in request.endpoint %}active{% endif %}" href="{{ url_for('tasks') }}"><i class="fa-solid fa-list-check"></i><span>タスク</span></a></li>
+        <li><a class="nav-item nav-icon-gray" href="#"><i class="fa-solid fa-gear"></i><span>設定</span></a></li>
+        <li><a class="nav-item nav-icon-sky {% if request.endpoint=='shift_team' %}active{% endif %}" href="{{ url_for('shift_team') }}"><i class="fa-solid fa-people-group"></i><span>シフト確認</span></a></li>
+        <li><a class="nav-item nav-icon-orange {% if request.endpoint=='schedules' %}active{% endif %}" href="{{ url_for('schedules') }}"><i class="fa-solid fa-calendar"></i><span>スケジュール</span></a></li>
         {% if user["role"]=="admin" %}
-        <li><a class="nav-item {% if request.endpoint=='admin_users' %}active{% endif %}" href="{{ url_for('admin_users') }}"><i class="fa-solid fa-user-gear"></i><span>管理：ユーザー</span></a></li>
-        <li><a class="nav-item {% if request.endpoint=='admin_timeranges' %}active{% endif %}" href="{{ url_for('admin_timeranges') }}"><i class="fa-solid fa-clock"></i><span>管理：時間帯</span></a></li>
-        <li><a class="nav-item {% if request.endpoint=='admin_teams' or request.endpoint=='admin_team_edit' %}active{% endif %}" href="{{ url_for('admin_teams') }}"><i class="fa-solid fa-sitemap"></i><span>管理：チーム</span></a></li>
+        <li><a class="nav-item nav-icon-pink {% if request.endpoint=='admin_users' %}active{% endif %}" href="{{ url_for('admin_users') }}"><i class="fa-solid fa-user-gear"></i><span>管理：ユーザー</span></a></li>
+        <li><a class="nav-item nav-icon-pink {% if request.endpoint=='admin_timeranges' %}active{% endif %}" href="{{ url_for('admin_timeranges') }}"><i class="fa-solid fa-clock"></i><span>管理：時間帯</span></a></li>
+        <li><a class="nav-item nav-icon-pink {% if request.endpoint=='admin_teams' or request.endpoint=='admin_team_edit' %}active{% endif %}" href="{{ url_for('admin_teams') }}"><i class="fa-solid fa-sitemap"></i><span>管理：チーム</span></a></li>
         {% endif %}
       </ul>
-      <div class="logout-link"><a class="nav-item" href="{{ url_for('logout') }}"><i class="fa-solid fa-right-from-bracket"></i><span>ログアウト</span></a></div>
+      <div class="logout-link"><a class="nav-item nav-icon-red" href="{{ url_for('logout') }}"><i class="fa-solid fa-right-from-bracket"></i><span>ログアウト</span></a></div>
       <div class="user-box">
         <div><strong>{{ user["name"] }}</strong></div>
         <div class="user-role">{{ user["role"] }}</div>
