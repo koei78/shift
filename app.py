@@ -1,11 +1,54 @@
 import os
 from datetime import datetime, timedelta, date
-import sqlite3
+import psycopg2
+import psycopg2.extras
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
-DB_PATH = os.environ.get('DB_PATH', 'app.db')
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+
+class _CursorWrapper:
+    def __init__(self, cur):
+        self._cur = cur
+
+    def execute(self, sql, params=()):
+        self._cur.execute(sql.replace("?", "%s"), params)
+        return self
+
+    def executemany(self, sql, params_list):
+        self._cur.executemany(sql.replace("?", "%s"), params_list)
+
+    def fetchone(self):
+        return self._cur.fetchone()
+
+    def fetchall(self):
+        return self._cur.fetchall()
+
+
+class _ConnWrapper:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql, params=()):
+        cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql.replace("?", "%s"), params)
+        return cur
+
+    def cursor(self):
+        return _CursorWrapper(
+            self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        )
+
+    def commit(self):
+        self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        self._conn.close()
 
 # -----------------------------
 # 最小ユーザー（固定で1人だけ seed）
@@ -38,9 +81,8 @@ def fmt_date(d: date):
 # DB
 # -----------------------------
 def db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    conn = psycopg2.connect(DATABASE_URL)
+    return _ConnWrapper(conn)
 
 def init_db():
     conn = db()
@@ -48,7 +90,7 @@ def init_db():
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
@@ -59,7 +101,7 @@ def init_db():
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS time_ranges (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       label TEXT NOT NULL,            -- 例: 午前, 夕方など（任意）
       start TEXT NOT NULL,            -- HH:MM
       end TEXT NOT NULL,              -- HH:MM
@@ -70,7 +112,7 @@ def init_db():
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS submissions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL,
       week_start TEXT NOT NULL,   -- YYYY-MM-DD (target week monday)
       status TEXT NOT NULL DEFAULT 'draft',  -- draft/submitted
@@ -81,7 +123,7 @@ def init_db():
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS slots (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       submission_id INTEGER NOT NULL,
       day TEXT NOT NULL,           -- YYYY-MM-DD
       slot_index INTEGER NOT NULL, -- 1..3
@@ -93,7 +135,7 @@ def init_db():
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS schedules (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
       date TEXT NOT NULL,
       time TEXT NOT NULL,
@@ -110,7 +152,7 @@ def init_db():
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS tasks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
       user_id INTEGER,
       date TEXT,
@@ -122,7 +164,7 @@ def init_db():
     """)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS teams (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       created_at TEXT NOT NULL
     )
@@ -139,7 +181,7 @@ def init_db():
     """)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS projects (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT,
       description TEXT,
@@ -151,7 +193,7 @@ def init_db():
     """)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS project_members (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       project_id INTEGER NOT NULL,
       user_id INTEGER NOT NULL,
       FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
@@ -380,7 +422,8 @@ def admin_users():
                 )
                 conn.commit()
                 flash("ユーザー作成OK")
-            except sqlite3.IntegrityError:
+            except psycopg2.IntegrityError:
+                conn.rollback()
                 flash("そのemailは既に存在")
 
     users = conn.execute("SELECT * FROM users ORDER BY id").fetchall()
@@ -965,8 +1008,9 @@ def project_add():
             cur.execute("""
                 INSERT INTO projects (name, email, description, created_by, created_at)
                 VALUES (?, ?, ?, ?, ?)
+                RETURNING id
             """, (name, email, description, u["id"], created_at))
-            project_id = cur.lastrowid
+            project_id = cur.fetchone()["id"]
             
             for uid in user_ids:
                 conn.execute("INSERT INTO project_members (project_id, user_id) VALUES (?, ?)", (project_id, uid))
@@ -1012,7 +1056,8 @@ def project_detail(id):
                     conn.execute("INSERT INTO project_members (project_id, user_id) VALUES (?, ?)", (id, user_id))
                     conn.commit()
                     flash("メンバーを追加しました。")
-                except sqlite3.IntegrityError:
+                except psycopg2.IntegrityError:
+                    conn.rollback()
                     flash("すでに参加しているメンバーです。")
         elif action == "remove_member":
             user_id = request.form.get("user_id")
