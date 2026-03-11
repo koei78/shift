@@ -1,15 +1,93 @@
 import os
 from datetime import datetime, timedelta, date
-import psycopg2
-import psycopg2.extras
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
+_USE_PG = bool(DATABASE_URL)
+
+if _USE_PG:
+    import psycopg2
+    import psycopg2.extras
 
 
+# -------------------------------------------------------
+# DB abstraction: PostgreSQL (Render) / SQLite (local)
+# -------------------------------------------------------
 class _CursorWrapper:
+    """SQLite cursor を psycopg2 cursor 風に見せるラッパー"""
+    def __init__(self, cur):
+        self._cur = cur
+
+    def execute(self, sql, params=()):
+        self._cur.execute(sql, params)
+        return self
+
+    def executemany(self, sql, params_list):
+        self._cur.executemany(sql, params_list)
+
+    def fetchone(self):
+        row = self._cur.fetchone()
+        return dict(row) if row else None
+
+    def fetchall(self):
+        return [dict(r) for r in self._cur.fetchall()]
+
+    def __getitem__(self, key):
+        # COUNT(*) AS c などを cursor.fetchone()["c"] 形式でアクセスできるよう
+        return self.fetchone()[key]
+
+
+class _ConnWrapper:
+    def __init__(self, conn, pg=False):
+        self._conn = conn
+        self._pg = pg
+
+    def execute(self, sql, params=()):
+        if self._pg:
+            cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(sql.replace("?", "%s"), params)
+            return cur
+        else:
+            import sqlite3
+            cur = self._conn.execute(sql, params)
+            # sqlite3.Row をラップして dict 風アクセスに統一
+            return _SqliteCursorResult(cur)
+
+    def cursor(self):
+        if self._pg:
+            return _PgCursorWrapper(
+                self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            )
+        else:
+            return _CursorWrapper(self._conn.cursor())
+
+    def commit(self):
+        self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        self._conn.close()
+
+
+class _SqliteCursorResult:
+    """sqlite3 の execute 結果を fetchone/fetchall で dict を返すラッパー"""
+    def __init__(self, cur):
+        self._cur = cur
+
+    def fetchone(self):
+        row = self._cur.fetchone()
+        return dict(row) if row else None
+
+    def fetchall(self):
+        return [dict(r) for r in self._cur.fetchall()]
+
+
+class _PgCursorWrapper:
+    """psycopg2 cursor ラッパー（? → %s 変換付き）"""
     def __init__(self, cur):
         self._cur = cur
 
@@ -25,30 +103,6 @@ class _CursorWrapper:
 
     def fetchall(self):
         return self._cur.fetchall()
-
-
-class _ConnWrapper:
-    def __init__(self, conn):
-        self._conn = conn
-
-    def execute(self, sql, params=()):
-        cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute(sql.replace("?", "%s"), params)
-        return cur
-
-    def cursor(self):
-        return _CursorWrapper(
-            self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        )
-
-    def commit(self):
-        self._conn.commit()
-
-    def rollback(self):
-        self._conn.rollback()
-
-    def close(self):
-        self._conn.close()
 
 # -----------------------------
 # 最小ユーザー（固定で1人だけ seed）
@@ -81,61 +135,72 @@ def fmt_date(d: date):
 # DB
 # -----------------------------
 def db():
-    conn = psycopg2.connect(DATABASE_URL)
-    return _ConnWrapper(conn)
+    if _USE_PG:
+        conn = psycopg2.connect(DATABASE_URL)
+        return _ConnWrapper(conn, pg=True)
+    else:
+        import sqlite3
+        conn = sqlite3.connect(os.environ.get('DB_PATH', 'app.db'))
+        conn.row_factory = sqlite3.Row
+        return _ConnWrapper(conn, pg=False)
+
+# SQLite用の型名（SERIAL→INTEGER PRIMARY KEY AUTOINCREMENT）
+def _serial():
+    return "SERIAL" if _USE_PG else "INTEGER PRIMARY KEY AUTOINCREMENT"
 
 def init_db():
     conn = db()
     cur = conn.cursor()
+    PK = _serial()
 
-    cur.execute("""
+    cur.execute(f"""
     CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
+      id {PK},
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'staff', -- staff/admin
+      role TEXT NOT NULL DEFAULT 'staff',
       is_active INTEGER NOT NULL DEFAULT 1
     )
     """)
 
-    cur.execute("""
+    cur.execute(f"""
     CREATE TABLE IF NOT EXISTS time_ranges (
-      id SERIAL PRIMARY KEY,
-      label TEXT NOT NULL,            -- 例: 午前, 夕方など（任意）
-      start TEXT NOT NULL,            -- HH:MM
-      end TEXT NOT NULL,              -- HH:MM
+      id {PK},
+      label TEXT NOT NULL,
+      start TEXT NOT NULL,
+      end TEXT NOT NULL,
       sort_order INTEGER NOT NULL DEFAULT 100,
       is_active INTEGER NOT NULL DEFAULT 1
     )
     """)
 
-    cur.execute("""
+    cur.execute(f"""
     CREATE TABLE IF NOT EXISTS submissions (
-      id SERIAL PRIMARY KEY,
+      id {PK},
       user_id INTEGER NOT NULL,
-      week_start TEXT NOT NULL,   -- YYYY-MM-DD (target week monday)
-      status TEXT NOT NULL DEFAULT 'draft',  -- draft/submitted
+      week_start TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft',
       updated_at TEXT NOT NULL,
       UNIQUE(user_id, week_start)
     )
     """)
 
-    cur.execute("""
+    cur.execute(f"""
     CREATE TABLE IF NOT EXISTS slots (
-      id SERIAL PRIMARY KEY,
+      id {PK},
       submission_id INTEGER NOT NULL,
-      day TEXT NOT NULL,           -- YYYY-MM-DD
-      slot_index INTEGER NOT NULL, -- 1..3
-      time_range_id INTEGER,       -- time_ranges.id
+      day TEXT NOT NULL,
+      slot_index INTEGER NOT NULL,
+      time_range_id INTEGER,
       note TEXT,
       UNIQUE(submission_id, day, slot_index)
     )
     """)
 
-    cur.execute("""
+    cur.execute(f"""
     CREATE TABLE IF NOT EXISTS schedules (
-      id SERIAL PRIMARY KEY,
+      id {PK},
       title TEXT NOT NULL,
       date TEXT NOT NULL,
       time TEXT NOT NULL,
@@ -150,9 +215,9 @@ def init_db():
     )
     """)
 
-    cur.execute("""
+    cur.execute(f"""
     CREATE TABLE IF NOT EXISTS tasks (
-      id SERIAL PRIMARY KEY,
+      id {PK},
       title TEXT NOT NULL,
       user_id INTEGER,
       date TEXT,
@@ -162,9 +227,9 @@ def init_db():
       created_at TEXT NOT NULL
     )
     """)
-    cur.execute("""
+    cur.execute(f"""
     CREATE TABLE IF NOT EXISTS teams (
-      id SERIAL PRIMARY KEY,
+      id {PK},
       name TEXT NOT NULL,
       created_at TEXT NOT NULL
     )
@@ -179,9 +244,9 @@ def init_db():
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
     """)
-    cur.execute("""
+    cur.execute(f"""
     CREATE TABLE IF NOT EXISTS projects (
-      id SERIAL PRIMARY KEY,
+      id {PK},
       name TEXT NOT NULL,
       email TEXT,
       description TEXT,
@@ -191,9 +256,9 @@ def init_db():
       FOREIGN KEY(created_by) REFERENCES users(id)
     )
     """)
-    cur.execute("""
+    cur.execute(f"""
     CREATE TABLE IF NOT EXISTS project_members (
-      id SERIAL PRIMARY KEY,
+      id {PK},
       project_id INTEGER NOT NULL,
       user_id INTEGER NOT NULL,
       FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
