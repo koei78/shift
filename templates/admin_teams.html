@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>管理：チーム作成・一覧</h2>
+
+  <div class="card" style="background:#f8fafc">
+    <h3 style="margin:0 0 10px 0">新規チーム作成</h3>
+    <form method="post">
+      <div class="row">
+        <div style="flex:1">
+          <div class="muted">チーム名</div>
+          <input name="name" placeholder="Aチーム" required>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" type="submit">作成</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card" style="background:#f8fafc">
+    <h3 style="margin:0 0 10px 0">チーム一覧</h3>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>チーム名</th>
+          <th>所属人数</th>
+          <th>作成日時</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in teams %}
+        <tr>
+          <td>{{ t.id }}</td>
+          <td><strong>{{ t.name }}</strong></td>
+          <td>{{ t.member_count }} 名</td>
+          <td class="muted">{{ t.created_at }}</td>
+          <td>
+            <a class="btn" href="{{ url_for('admin_team_edit', team_id=t.id) }}">編集 (メンバー追加等)</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="muted">チームがありません。</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

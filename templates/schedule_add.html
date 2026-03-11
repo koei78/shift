@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+  }
+  .form-group label {
+    font-weight: bold;
+    margin-bottom: 6px;
+    color: #4a5568;
+  }
+  .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  /* PC用レイアウト (幅が広い場合) */
+  @media (min-width: 768px) {
+    .form-group {
+      flex-direction: row;
+      align-items: center;
+    }
+    .form-group label {
+      width: 160px;
+      flex-shrink: 0;
+      margin-bottom: 0;
+    }
+    .form-group-top {
+      align-items: flex-start;
+    }
+    .form-group-top label {
+      padding-top: 10px;
+    }
+    .form-row {
+      flex-direction: row;
+    }
+    .form-row .form-group {
+      flex: 1;
+    }
+    .form-row .form-group label {
+      width: 60px; /* 日付・時刻などの短いラベル用 */
+    }
+  }
+</style>
+
+<h2><i class="fa-solid fa-calendar-plus"></i> 予定追加</h2>
+
+<div class="card" style="max-width: 800px;">
+  <form method="POST" action="{{ url_for('schedule_add') }}">
+    
+    <div class="form-group">
+      <label>予定の種類</label>
+      <select name="schedule_type">
+        <option value="">-- 選択なし --</option>
+        <option value="商談">商談</option>
+        <option value="メール送信">メール送信</option>
+        <option value="電話">電話</option>
+        <option value="作業">作業</option>
+        <option value="その他">その他</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>予定タイトル <span style="color:red">*</span></label>
+      <input type="text" name="title" required placeholder="訪問、打ち合わせ等">
+    </div>
+
+    <div class="form-row" style="margin-bottom: 16px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>日付 <span style="color:red">*</span></label>
+        <input type="date" name="date" required>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label style="text-align: right; padding-right:10px;">時刻 <span style="color:red">*</span></label>
+        <input type="time" name="time" required>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>担当者 <span style="color:red">*</span></label>
+      <select name="user_id" required>
+        <option value="">-- 追加する担当者を選択 --</option>
+        {% for u in users %}
+          <option value="{{ u.id }}">{{ u.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>紐づく案件</label>
+      <select name="project_id">
+        <option value="">-- 対象プロジェクトなし --</option>
+        {% for p in projects %}
+          <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <hr style="border:none; border-top:1px solid #eef3f8; margin:20px 0;">
+
+    <div class="form-group">
+      <label>会社名</label>
+      <input type="text" name="company_name" placeholder="株式会社〇〇">
+    </div>
+
+    <div class="form-group">
+      <label>電話番号</label>
+      <input type="tel" name="phone_number" placeholder="000-0000-0000">
+    </div>
+
+    <div class="form-group">
+      <label>先方担当者名</label>
+      <input type="text" name="contact_person" placeholder="山田 太郎">
+    </div>
+
+    <div class="form-group form-group-top">
+      <label>メモ</label>
+      <textarea name="memo" rows="5" style="width:100%; padding:10px; border-radius:10px; border:1px solid #e0e7ef; font-family: inherit;" placeholder="特記事項など"></textarea>
+    </div>
+
+    <div style="text-align: right; margin-top: 20px;">
+      <button type="submit" class="btn primary" style="padding: 12px 24px; font-size: 16px;">
+        <i class="fa-solid fa-plus"></i> 予定を追加する
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

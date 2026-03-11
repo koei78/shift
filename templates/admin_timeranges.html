@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>管理：時間帯マスタ（作成・編集）</h2>
+
+  <div class="card" style="background:#0f1626">
+    <h3 style="margin:0 0 10px 0">追加</h3>
+    <form method="post">
+      <div class="row">
+        <div style="width:220px">
+          <div class="muted">Label</div>
+          <input name="label" placeholder="朝/昼/夕など">
+        </div>
+        <div style="width:200px">
+          <div class="muted">Start (HH:MM)</div>
+          <input name="start" placeholder="09:00">
+        </div>
+        <div style="width:200px">
+          <div class="muted">End (HH:MM)</div>
+          <input name="end" placeholder="12:00">
+        </div>
+        <div style="width:160px">
+          <div class="muted">Sort</div>
+          <input name="sort_order" placeholder="10">
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" type="submit">追加</button>
+      </div>
+      <p class="muted">この時間帯がシフト提出のプルダウンに出ます。</p>
+    </form>
+  </div>
+
+  <div class="card" style="background:#0f1626">
+    <h3 style="margin:0 0 10px 0">一覧（編集）</h3>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th><th>Label</th><th>Start</th><th>End</th><th>Sort</th><th>Active</th><th>更新</th><th>無効化</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in ranges %}
+        <tr>
+          <form method="post" action="{{ url_for('admin_timeranges_update') }}">
+            <td>{{ r["id"] }}<input type="hidden" name="id" value="{{ r['id'] }}"></td>
+            <td><input name="label" value="{{ r['label'] }}"></td>
+            <td><input name="start" value="{{ r['start'] }}"></td>
+            <td><input name="end" value="{{ r['end'] }}"></td>
+            <td><input name="sort_order" value="{{ r['sort_order'] }}"></td>
+            <td>
+              <select name="is_active">
+                <option value="1" {% if r["is_active"]==1 %}selected{% endif %}>ON</option>
+                <option value="0" {% if r["is_active"]==0 %}selected{% endif %}>OFF</option>
+              </select>
+            </td>
+            <td><button class="btn primary" type="submit">更新</button></td>
+          </form>
+          <td>
+            <form method="post" action="{{ url_for('admin_timeranges_delete') }}">
+              <input type="hidden" name="id" value="{{ r['id'] }}">
+              <button class="btn danger" type="submit">無効化</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="muted">※削除は参照崩れ防止で「無効化」</p>
+  </div>
+</div>
+{% endblock %}

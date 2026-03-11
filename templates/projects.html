@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 767px) {
+    .project-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    
+    /* レスポンシブテーブル化（スマホの場合だけカード形式に表示） */
+    .table-container { border: none !important; }
+    .table thead { display: none; }
+    .table tbody tr {
+      display: block;
+      margin-bottom: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 12px;
+      background: #f8fafc;
+    }
+    .table tbody td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border: none !important;
+      text-align: left !important;
+    }
+    .table tbody td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      color: #64748b;
+      margin-right: 10px;
+      white-space: nowrap;
+    }
+    .table tbody td:last-child {
+      margin-top: 8px;
+      justify-content: flex-end;
+    }
+    .table tbody td:last-child .btn {
+      width: 100%;
+    }
+  }
+</style>
+<div class="card">
+  <div class="project-header">
+    <h2 style="margin:0;"><i class="fa-solid fa-briefcase"></i> 案件一覧</h2>
+    {% if user["role"] == "admin" %}
+    <a href="{{ url_for('project_add') }}" class="btn primary">
+      <i class="fa-solid fa-plus"></i> 新規案件作成
+    </a>
+    {% endif %}
+  </div>
+
+  <div class="table-container">
+    <table class="table">
+    <thead>
+      <tr>
+        <th style="text-align: left;">案件名</th>
+        <th style="text-align: left;">連絡先(Email)</th>
+        <th style="text-align: left;">作成者</th>
+        <th style="text-align: left;">作成日</th>
+        <th style="text-align: center;">詳細</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in projects %}
+      <tr>
+        <td data-label="案件名"><strong>{{ p.name }}</strong></td>
+        <td data-label="連絡先">{{ p.email }}</td>
+        <td data-label="作成者">{{ p.creator_name }}</td>
+        <td data-label="作成日">{{ p.created_at[:10] }}</td>
+        <td data-label="" style="text-align: center;">
+          <a class="btn" href="{{ url_for('project_detail', id=p.id) }}">詳細を見る</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" data-label="" class="muted" style="text-align: center; padding: 30px; border:none; display:block;">案件がまだありません。</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h2>チーム編集: {{ team.name }}</h2>
+    <a href="{{ url_for('admin_teams') }}" class="btn">戻る</a>
+  </div>
+
+  <div class="card" style="background:#f8fafc">
+    <h3 style="margin:0 0 10px 0">チーム名変更</h3>
+    <form method="post" class="row">
+      <input type="hidden" name="action" value="update_name">
+      <div style="flex:1">
+        <input name="name" value="{{ team.name }}" required>
+      </div>
+      <div>
+        <button class="btn primary" type="submit">更新</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card" style="background:#f8fafc">
+    <h3 style="margin:0 0 10px 0">メンバー追加（複数選択可）</h3>
+    <form method="post" class="row" style="align-items: flex-start;">
+      <input type="hidden" name="action" value="add_member">
+      <div style="flex:1">
+        <select name="user_ids" multiple required style="height: 120px;">
+          <option value="" disabled>-- 追加するユーザーを選択（Ctrl/Cmdキーで複数選択） --</option>
+          {% for u in available_users %}
+          <option value="{{ u.id }}">{{ u.name }}</option>
+          {% endfor %}
+        </select>
+        <div class="muted" style="margin-top:4px;">※Ctrlキー（MacはCmdキー）を押しながらクリックで複数選択できます</div>
+      </div>
+      <div>
+        <button class="btn primary" type="submit">一括追加</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card" style="background:#f8fafc">
+    <h3 style="margin:0 0 10px 0">現在のメンバー</h3>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>名前</th>
+          <th>役職</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in members %}
+        <tr>
+          <td>
+            <strong>{{ m.name }}</strong>
+            {% if m.is_leader %} 
+            <span style="display:inline-block; margin-left:8px; padding:2px 6px; background:#475569; color:#fff; font-size:11px; border-radius:4px; font-weight:bold;">リーダー</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not m.is_leader %}
+            <form method="post" style="display:inline;">
+              <input type="hidden" name="action" value="set_leader">
+              <input type="hidden" name="user_id" value="{{ m.id }}">
+              <button class="btn" style="padding:4px 8px; font-size:12px;" type="submit">リーダーに設定</button>
+            </form>
+            {% else %}
+            <span class="muted">設定済</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" style="display:inline;">
+              <input type="hidden" name="action" value="remove_member">
+              <input type="hidden" name="user_id" value="{{ m.id }}">
+              <button class="btn" style="padding:4px 8px; font-size:12px; border-color:#d82b57; color:#d82b57;" type="submit">削除</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="3" class="muted">メンバーがいません。</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card" style="background:#fff5f5; border-color:#fc8181; margin-top:40px;">
+    <h3 style="margin:0 0 10px 0; color:#c53030;">デンジャーゾーン</h3>
+    <form method="post" onsubmit="return confirm('本当にこのチームを削除しますか？');">
+      <input type="hidden" name="action" value="delete_team">
+      <button class="btn" style="background:#e53e3e; color:#fff; border-color:#e53e3e;" type="submit">チームを削除する</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

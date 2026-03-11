@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="row" style="justify-content:space-between;align-items:flex-start">
+    <div>
+      <h2>ダッシュボード</h2>
+      <div class="muted">対象週：{{ week_start }} 〜 {{ week_end }}</div>
+      <div class="muted">締切：{{ deadline_at }}</div>
+      <div class="muted">{{ "締切後（スタッフ編集不可）" if locked else "締切前（編集OK）" }}</div>
+    </div>
+    <div style="text-align:right">
+      <div><strong>{{ user["name"] }}</strong>（{{ user["role"] }}）</div>
+      <div class="muted">提出状況：{{ my_status }}</div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:12px">
+    <a class="btn primary" href="{{ url_for('shift_submit') }}">提出/編集</a>
+    <a class="btn" href="{{ url_for('shift_team') }}">みんなの希望</a>
+    {% if user["role"]=="admin" %}
+      <a class="btn" href="{{ url_for('admin_users') }}">管理：ユーザー追加</a>
+      <a class="btn" href="{{ url_for('admin_timeranges') }}">管理：時間帯作成</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row" style="align-items: stretch; margin-top: 16px;">
+  <!-- 左カラム: 案件・タスク -->
+  <div style="flex: 2; display: flex; flex-direction: column; gap: 16px; min-width: 300px;">
+    <!-- 自分が関わっている案件 -->
+    <div class="card" style="margin: 0;">
+      <h3 style="margin:0 0 12px 0; border-bottom: 2px solid #eef3f8; padding-bottom: 8px;">
+        <i class="fa-solid fa-briefcase"></i> 担当中の案件
+      </h3>
+      {% if my_projects %}
+      <ul style="list-style: none; padding: 0; margin: 0;">
+        {% for p in my_projects %}
+        <li style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong>{{ p.name }}</strong>
+          </div>
+          <a class="btn" style="padding: 4px 10px; font-size: 12px;" href="{{ url_for('project_detail', id=p.id) }}">詳細を見る</a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="muted">現在、担当している案件はありません。</div>
+      {% endif %}
+    </div>
+
+    <!-- 自分の未完了タスク -->
+    <div class="card" style="margin: 0;">
+      <h3 style="margin:0 0 12px 0; border-bottom: 2px solid #eef3f8; padding-bottom: 8px;">
+        <i class="fa-solid fa-list-check"></i> 未完了のタスク
+      </h3>
+      {% if my_tasks %}
+      <ul style="list-style: none; padding: 0; margin: 0;">
+        {% for t in my_tasks %}
+        <li style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong>{{ t.title }}</strong>
+            {% if t.deadline %}<span class="muted" style="margin-left: 8px; font-size: 11px;"><i class="fa-regular fa-clock"></i> 期限: {{ t.deadline }}</span>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="muted">現在、未完了のタスクはありません。</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 右カラム: チーム・スケジュール -->
+  <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; min-width: 300px;">
+    <!-- チームメイト -->
+    <div class="card" style="margin: 0;">
+      <h3 style="margin:0 0 12px 0; border-bottom: 2px solid #eef3f8; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+        <span><i class="fa-solid fa-users"></i> チームメイト</span>
+        <span class="muted" style="font-size: 12px;">所属チーム: {{ my_team_name }}</span>
+      </h3>
+      {% if my_team_name != '未所属' and my_teammates %}
+      <ul style="list-style: none; padding: 0; margin: 0;">
+        {% for tm in my_teammates %}
+        <li style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+          <strong>{{ tm.name }}</strong>
+          {% if tm.is_leader %} 
+          <span style="color:#10b981; font-size:11px; margin-left:4px; font-weight:bold;">(LD)</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% elif my_team_name != '未所属' %}
+      <div class="muted">同じチームのメンバーはいません。</div>
+      {% else %}
+      <div class="muted">チームに所属していません。</div>
+      {% endif %}
+    </div>
+
+    <!-- 直近のスケジュール -->
+    <div class="card" style="margin: 0;">
+      <h3 style="margin:0 0 12px 0; border-bottom: 2px solid #eef3f8; padding-bottom: 8px;">
+        <i class="fa-solid fa-calendar"></i> 直近のスケジュール
+      </h3>
+      {% if my_schedules %}
+      <ul style="list-style: none; padding: 0; margin: 0;">
+        {% for s in my_schedules %}
+        <li style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+          <div style="font-size: 13px; font-weight: bold; color: #475569;">{{ s.date }} {{ s.time }}
+              {% if s.schedule_type %}
+              <span style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">{{ s.schedule_type }}</span>
+              {% endif %}
+              {% if s.project_name %}
+              <span style="background: #dbeafe; color: #1e3a8a; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">{{ s.project_name }}</span>
+              {% endif %}
+            </div>
+          <div style="margin-top: 2px;">{{ s.title }}</div>
+        </li>
+        {% endfor %}
+      </ul>
+      <div style="margin-top: 12px; text-align: right;">
+        <a href="{{ url_for('schedules') }}" class="btn" style="padding: 4px 10px; font-size: 12px;">すべて見る</a>
+      </div>
+      {% else %}
+      <div class="muted">直近の予定はありません。</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .project-detail-layout {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .project-main-col {
+    flex: 2;
+    min-width: 300px;
+  }
+  .project-side-col {
+    flex: 1;
+    min-width: 300px;
+  }
+  .project-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eef3f8;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+  
+  @media (max-width: 767px) {
+    .project-detail-layout {
+      flex-direction: column;
+      gap: 15px;
+    }
+    .project-main-col, .project-side-col {
+      width: 100%;
+      min-width: 100%;
+    }
+    .project-header-top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    input[type="text"], input[type="email"], textarea, select {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  }
+</style>
+
+<div class="project-detail-layout">
+  
+  <div class="project-main-col">
+    <div class="card">
+      <div class="project-header-top">
+        <h2 style="margin:0;"><i class="fa-solid fa-briefcase"></i> 案件詳細</h2>
+        <a href="{{ url_for('projects') }}" class="btn">一覧へ戻る</a>
+      </div>
+
+      {% if user["role"] == "admin" %}
+      <form method="post">
+        <input type="hidden" name="action" value="update">
+        
+        <div style="margin-bottom: 12px;">
+          <div class="muted">案件名</div>
+          <input type="text" name="name" value="{{ project.name }}" required>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <div class="muted">連絡先メールアドレス</div>
+          <input type="email" name="email" value="{{ project.email or '' }}">
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <div class="muted">案件内容</div>
+          <textarea name="description" rows="5">{{ project.description or '' }}</textarea>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+          <div class="muted">メール文・テンプレート</div>
+          <textarea name="mail_text" rows="5">{{ project.mail_text or '' }}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px;">
+          <button type="submit" class="btn primary">更新する</button>
+        </div>
+      </form>
+      {% else %}
+      <div style="margin-bottom: 16px;">
+        <div class="muted">案件名</div>
+        <div style="font-size: 18px; font-weight: bold; margin-top: 4px;">{{ project.name }}</div>
+      </div>
+      
+      <div style="margin-bottom: 16px;">
+        <div class="muted">連絡先メールアドレス</div>
+        <div style="margin-top: 4px;">{{ project.email or '未登録' }}</div>
+      </div>
+      
+      <div style="margin-bottom: 16px;">
+        <div class="muted">案件内容</div>
+        <div style="margin-top: 4px; white-space: pre-wrap; background: #f8fafc; padding: 12px; border-radius: 4px; border: 1px solid #e2e8f0;">{{ project.description or '詳細情報はありません。' }}</div>
+      </div>
+      
+      <div style="margin-bottom: 16px;">
+        <div class="muted">メール文・テンプレート</div>
+        <div style="margin-top: 4px; white-space: pre-wrap; background: #f8fafc; padding: 12px; border-radius: 4px; border: 1px solid #e2e8f0;">{{ project.mail_text or 'テンプレートはありません。' }}</div>
+      </div>
+      {% endif %}
+
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px dotted #eef3f8;" class="muted">
+        作成者: {{ project.creator_name }} / 作成日時: {{ project.created_at }}
+      </div>
+      
+      {% if user["role"] == "admin" %}
+      <div style="margin-top: 40px; padding: 16px; background: #fff5f5; border: 1px solid #fecaca; border-radius: 4px;">
+        <div style="color: #b91c1c; font-weight: bold; margin-bottom: 10px;">危険な操作</div>
+        <form method="post" onsubmit="return confirm('本当にこの案件を削除しますか？\n（復元できません）');">
+          <input type="hidden" name="action" value="delete">
+          <button type="submit" class="btn" style="background:#ef4444; color:#fff; border-color:#ef4444;">案件を完全に削除</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="project-side-col">
+    <div class="card">
+      <h3 style="margin:0 0 16px 0; border-bottom: 1px solid #eef3f8; padding-bottom: 8px;">
+        <i class="fa-solid fa-users"></i> アサインされたメンバー
+      </h3>
+      
+      <ul style="list-style: none; padding: 0; margin: 0;">
+        {% for m in members %}
+        <li style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+          <div>
+            <strong>{{ m.name }}</strong>
+            <div class="muted" style="font-size: 11px;">{{ m.email }}</div>
+          </div>
+          {% if user["role"] == "admin" %}
+          <form method="post" style="margin:0;">
+            <input type="hidden" name="action" value="remove_member">
+            <input type="hidden" name="user_id" value="{{ m.id }}">
+            <button type="submit" class="btn" style="padding: 4px 8px; font-size: 12px; color: #b91c1c; border-color: #fca5a5;" onclick="return confirm('メンバーから外しますか？');">外す</button>
+          </form>
+          {% endif %}
+        </li>
+        {% else %}
+        <li class="muted" style="padding: 10px 0;">アサインされているメンバーはいません。</li>
+        {% endfor %}
+      </ul>
+
+      {% if user["role"] == "admin" %}
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eef3f8;">
+        <h4 style="margin: 0 0 10px 0; font-size: 14px;">メンバーを追加</h4>
+        <form method="post" style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <input type="hidden" name="action" value="add_member">
+          <select name="user_id" required style="flex: 1; padding: 6px; font-size: 13px; min-width: 150px;">
+            <option value="">-- ユーザーを選択 --</option>
+            {% for u in available_users %}
+            <option value="{{ u.id }}">{{ u.name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn primary" style="padding: 6px 12px; font-size: 13px;">追加</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

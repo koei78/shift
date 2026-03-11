@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <style>
+    :root{
+      --accent:#1f6feb;
+      --accent-soft:#e7f0ff;
+      --border:#eef3f8;
+      --border-strong:#cfe0f4;
+      --text:#0b1220;
+      --muted:#556679;
+      --surface:#ffffff;
+      --surface-2:#f7f9fc;
+      --success:#19b464;
+    }
+
+    .submit-nav{
+      display:grid;
+      grid-template-columns:1fr auto 1fr;
+      align-items:center;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:10px 12px;
+      box-shadow:0 1px 3px rgba(16,24,40,0.04);
+    }
+    .nav-arrow{justify-self:start}
+    .nav-arrow.next{justify-self:end}
+    .nav-circle{
+      width:40px;
+      height:40px;
+      border-radius:50%;
+      border:1px solid var(--border-strong);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:var(--muted);
+      background:var(--surface);
+      text-decoration:none;
+      transition:.15s;
+    }
+    .nav-circle:hover{background:var(--surface-2);border-color:#a3c9f1}
+    .nav-circle.disabled{
+      opacity:.5;
+      cursor:default;
+      pointer-events:none;
+    }
+    .nav-center{
+      justify-self:center;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:18px;
+      font-weight:700;
+      color:var(--text);
+      white-space:nowrap;
+    }
+    .nav-center .fa-calendar{color:var(--accent)}
+    .nav-sub{margin-top:8px}
+
+    .shift-table{width:100%;border-collapse:separate;border-spacing:0;margin-top:12px}
+    .shift-table th,.shift-table td{border-bottom:1px solid var(--border);padding:10px;vertical-align:top}
+    .shift-table thead th{background:var(--surface-2);color:var(--text);font-weight:700}
+    .shift-table tbody tr:hover{background:#f7fbff}
+    .date-cell{width:160px}
+    .date-md{font-size:16px;font-weight:800;color:var(--text)}
+    .date-dow{font-size:12px;color:var(--muted);margin-top:4px}
+
+    .slot-grid{display:flex;flex-wrap:wrap;gap:8px}
+    .slot-chip{display:inline-flex;align-items:center}
+    .slot-chip input{position:absolute;opacity:0;pointer-events:none}
+    .slot-chip span{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid var(--border-strong);
+      background:var(--surface-2);
+      color:var(--text);
+      font-weight:700;
+      font-size:13px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .slot-chip input:checked + span{
+      background:var(--success);
+      border-color:var(--success);
+      color:#ffffff;
+    }
+    .slot-chip span:hover{border-color:var(--accent)}
+    .rest-pill{
+      display:inline-flex;
+      align-items:center;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid var(--border-strong);
+      background:var(--surface);
+      color:var(--muted);
+      font-weight:700;
+      font-size:13px;
+    }
+  </style>
+
+  <div class="submit-nav">
+    <span class="nav-circle nav-arrow disabled" aria-hidden="true">
+      <i class="fa-solid fa-chevron-left"></i>
+    </span>
+    <div class="nav-center">
+      <span>{{ week_start.strftime('%Y/%m') }}</span>
+      <i class="fa-regular fa-calendar"></i>
+    </div>
+    <span class="nav-circle nav-arrow next disabled" aria-hidden="true">
+      <i class="fa-solid fa-chevron-right"></i>
+    </span>
+  </div>
+
+  <div class="muted nav-sub">対象週：{{ week_start }} 〜 {{ week_end }} ／ 締切：{{ deadline_at }}</div>
+  {% if locked and user["role"] != "admin" %}
+    <div class="flash">締切後なので編集できません。</div>
+  {% endif %}
+
+  <form method="post">
+    <table class="shift-table">
+      <thead>
+        <tr>
+          <th style="width:160px">日付</th>
+          <th>希望時間帯（複数選択可）</th>
+        </tr>
+      </thead>
+      
+      <tbody>
+        {% for d in week_dates %}
+        {% set day = d.strftime("%Y-%m-%d") %}
+        <tr>
+          <td>
+            <div class="date-cell">
+              <div class="date-md">{{ d.strftime("%m/%d") }}</div>
+              <div class="date-dow">{{ ["月","火","水","木","金","土","日"][d.weekday()] }}</div>
+            </div>
+          </td>
+          <td>
+            <div class="slot-grid">
+              {% for r in ranges %}
+                <label class="slot-chip">
+                  <input type="checkbox" name="{{ day }}__tid" value="{{ r["id"] }}" {% if (r["id"]|string) in selected_map.get(day, []) %}checked{% endif %} {% if locked and user["role"] != "admin" %}disabled{% endif %}>
+                  <span>{{ r["start"] }}-{{ r["end"] }}</span>
+                </label>
+              {% endfor %}
+
+              {% if selected_map.get(day, [])|length == 0 %}
+                <span class="rest-pill">休み</span>
+              {% endif %}
+            </div>
+            {% if ranges|length == 0 %}
+              <div class="muted">時間帯が未登録です。管理者に追加を依頼してください。</div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="row" style="margin-top:12px">
+      {% if not (locked and user["role"] != "admin") %}
+        <button class="btn" name="submit_draft" value="1" type="submit">下書き保存</button>
+        <button class="btn primary" name="submit_final" value="1" type="submit">提出確定</button>
+      {% endif %}
+      <a class="btn" href="{{ url_for('dashboard') }}">戻る</a>
+    </div>
+  </form>
+
+  {% if ranges|length == 0 %}
+    <p class="muted">時間帯が未登録です。管理者が「管理：時間帯」から追加してください。</p>
+  {% endif %}
+</div>
+{% endblock %}

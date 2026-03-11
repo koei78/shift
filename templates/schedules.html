@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  /* 2カラムレイアウトの外枠 */
+  .dashboard-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 1200px;
+  }
+  @media (min-width: 900px) {
+    .dashboard-layout {
+      flex-direction: row;
+    }
+  }
+
+  .left-col {
+    flex: 2;
+    min-width: 0;
+  }
+  .right-col {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .section-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+  }
+  .header-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .circle-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid #ccc;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    cursor: pointer;
+  }
+  .circle-btn:hover {
+    background: #f0f0f0;
+  }
+
+  /* 左側のカード (予定一覧) */
+  .repo-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+  }
+  .repo-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .repo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 8px;
+  }
+  .repo-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333; /* 黒系の色に変更 */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .repo-title i {
+    color: #888;
+    font-size: 16px;
+  }
+  .repo-date {
+    font-size: 12px;
+    color: #888;
+  }
+  .repo-desc {
+    font-size: 14px;
+    color: #333;
+  }
+  .repo-links {
+    font-size: 12px;
+    color: #333; /* 黒系の色に変更 */
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .repo-links span {
+    color: #333; /* 黒系の色に変更 */
+  }
+  .repo-links .divider {
+    color: #ccc;
+  }
+
+  /* 右側のカード (最近の更新) */
+  .activity-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+  }
+  .activity-item {
+    padding: 16px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    gap: 12px;
+  }
+  .activity-item:last-child {
+    border-bottom: none;
+  }
+  .user-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e88b9e;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  .activity-content {
+    flex: 1;
+    font-size: 13px;
+  }
+  .activity-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .activity-text strong {
+    color: #333;
+  }
+  .badge {
+    background: #6c7993;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-left: 4px;
+    margin-right: 4px;
+  }
+  .activity-time {
+    color: #888;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .activity-sub {
+    color: #666;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  .modal-table th {
+    width: 30%;
+    color: #556679;
+    text-align: right;
+    padding-right: 15px;
+    border-right: 2px solid #eef3f8;
+  }
+  .modal-table td {
+    padding-left: 15px;
+  }
+</style>
+
+<div class="dashboard-layout">
+  <!-- 左カラム: 予定一覧 -->
+  <div class="left-col">
+    <div class="section-header">
+      <h3>予定一覧</h3>
+      <div class="header-actions">
+        <a href="{{ url_for('schedule_add') }}" class="circle-btn" title="新しい予定を追加"><i class="fa-solid fa-plus"></i></a>
+        <button class="circle-btn" title="検索"><i class="fa-solid fa-magnifying-glass"></i></button>
+      </div>
+    </div>
+
+    {% if schedules %}
+      {% for s in schedules %}
+        <div class="repo-card" onclick="showModal('{{ s.id }}')">
+          <div class="repo-header">
+            <div class="repo-title">
+              <i class="fa-solid fa-calendar-days"></i> {{ s.title }}
+              {% if s.schedule_type %}
+              <span class="badge">{{ s.schedule_type }}</span>
+              {% endif %}
+              {% if s.project_name %}
+              <span class="badge" style="background:#3b82f6;">{{ s.project_name }}</span>
+              {% endif %}
+            </div>
+            <div class="repo-date">
+              予定日時: {{ s.date }} {{ s.time }}
+            </div>
+          </div>
+          
+          <div class="repo-desc">
+            {{ s.memo or 'メモなし' }}
+          </div>
+          
+          <div class="repo-links">
+            <span>担当: {{ s.user_name }}</span>
+            <span class="divider">|</span>
+            <span>会社名: {{ s.company_name or '未入力' }}</span>
+            <span class="divider">|</span>
+            <span>先方担当: {{ s.contact_person or '未入力' }}</span>
+          </div>
+        </div>
+
+        <!-- Popup Modal (Hidden by default) -->
+        <div id="modal-{{ s.id }}" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+          <div class="modal-content" style="background: white; padding: 24px; border-radius: 4px; max-width: 600px; width: 90%; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);" onclick="event.stopPropagation();">
+            <button class="icon-btn" style="position: absolute; top: 16px; right: 16px; border: none; background: #f0f7ff;" onclick="closeModal('{{ s.id }}')">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 style="margin-top: 0; border-bottom: 2px solid #eef3f8; padding-bottom: 12px; color: #333;">
+              <i class="fa-solid fa-calendar-check"></i> 予定の詳細
+            </h3>
+            
+            <table class="modal-table" style="width: 100%; border-spacing: 0 12px; line-height: 1.5;">
+              <tr><th>種類</th><td>{{ s.schedule_type or '<span class="muted">未設定</span>'|safe }}</td></tr>
+              <tr><th>紐づく案件</th><td>{{ s.project_name or '<span class="muted">なし</span>'|safe }}</td></tr>
+              <tr><th>タイトル</th><td style="font-weight:bold; font-size:1.1em;">{{ s.title }}</td></tr>
+              <tr><th>日時</th><td>{{ s.date }} &nbsp; {{ s.time }}</td></tr>
+              <tr><th>自社担当</th><td>{{ s.user_name }}</td></tr>
+              <tr><th>会社名</th><td>{{ s.company_name or '<span class="muted">未入力</span>'|safe }}</td></tr>
+              <tr><th>電話番号</th><td>{{ s.phone_number or '<span class="muted">未入力</span>'|safe }}</td></tr>
+              <tr><th>先方担当者</th><td>{{ s.contact_person or '<span class="muted">未入力</span>'|safe }}</td></tr>
+              <tr><th style="vertical-align: top;">メモ</th>
+                  <td style="white-space: pre-wrap; background: #f7f9fc; padding: 12px; border-radius: 4px;">{{ s.memo or '<span class="muted">なし</span>'|safe }}</td></tr>
+            </table>
+            
+            <div style="text-align: right; margin-top: 20px;">
+              <button class="btn" style="padding: 8px 16px;" onclick="closeModal('{{ s.id }}')">閉じる</button>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div style="background: #fff; border: 1px solid #e0e0e0; padding: 40px; text-align: center; color: #888;">
+        登録されている予定はありません
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- 右カラム: 最近の追加 -->
+  <div class="right-col">
+    <div class="section-header">
+      <h3>最近追加された予定</h3>
+    </div>
+    
+    <div class="activity-card">
+      {% if recent %}
+        {% for r in recent %}
+          <div class="activity-item">
+            <div class="user-icon">
+              <!-- 名前の1文字目をアイコンにする -->
+              {{ r.user_name[0] if r.user_name else '?' }}
+            </div>
+            <div class="activity-content">
+              <div class="activity-top">
+                <div class="activity-text">
+                  <strong>{{ r.user_name }}</strong> さんが <span class="badge">予定</span> <strong>{{ r.title }}</strong> を追加
+                  {% if r.schedule_type %}
+                  <span class="badge" style="background:#e2e8f0; color:#333;">{{ r.schedule_type }}</span>
+                  {% endif %}
+                  {% if r.project_name %}
+                  <span class="badge" style="background:#e0f2fe; color:#1e40af;">{{ r.project_name }}</span>
+                  {% endif %}
+                </div>
+                <!-- 登録日をシンプルに表示 -->
+                <div class="activity-time">{{ r.created_at.split(' ')[0] }}</div>
+              </div>
+              <div class="activity-sub">
+                日時: {{ r.date }} {{ r.time }}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div style="padding: 20px; text-align: center; color: #888; font-size: 13px;">
+          履歴がありません
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  function showModal(id) {
+    const modal = document.getElementById('modal-' + id);
+    if(modal) {
+      modal.style.display = 'flex';
+    }
+  }
+
+  function closeModal(id) {
+    const modal = document.getElementById('modal-' + id);
+    if(modal) {
+      modal.style.display = 'none';
+    }
+  }
+
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function() {
+      this.style.display = 'none';
+    });
+  });
+</script>
+{% endblock %}

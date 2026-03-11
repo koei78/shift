@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  .login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 120px);
+  }
+  
+  .login-card {
+    background: #ffffff;
+    border: 1px solid #d1d9e6;
+    border-radius: 4px;
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); text-align: center;
+  }
+  
+  .login-header {
+    margin-bottom: 30px;
+  }
+  .login-header i {
+    font-size: 48px;
+    color: #1f6feb;
+    margin-bottom: 16px;
+  }
+  .login-header h2 {
+    margin: 0;
+    font-size: 24px;
+    color: #1f2d45;
+  }
+
+  .login-form-group {
+    text-align: left;
+    margin-bottom: 20px;
+  }
+  .login-form-group label {
+    display: block;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  
+  .login-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 4px;
+    border: 1px solid #cbd5e1;
+    font-size: 16px;
+    background: #f8fafc;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .login-input:focus {
+    outline: none;
+    border-color: #1f6feb;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.1);
+  }
+
+  .login-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 10px;
+    border-radius: 4px;
+  }
+
+  .login-footer {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #eef3f8;
+    font-size: 13px;
+    color: #64748b;
+  }
+  .login-footer strong {
+    color: #475569;
+  }
+</style>
+
+<div class="login-container">
+  <div class="login-card">
+    
+    <div class="login-header">
+      <i class="fa-solid fa-circle-user"></i>
+      <h2>Welcome Back</h2>
+      <p class="muted" style="margin-top: 8px;">Shift App にログインしてください</p>
+    </div>
+
+    <form method="post">
+      <div class="login-form-group">
+        <label for="email"><i class="fa-regular fa-envelope"></i> メールアドレス</label>
+        <input id="email" name="email" class="login-input" type="email" placeholder="admin@example.com" required autofocus>
+      </div>
+      
+      <div class="login-form-group">
+        <label for="password"><i class="fa-solid fa-lock"></i> パスワード</label>
+        <input id="password" name="password" class="login-input" type="password" placeholder="••••••••" required>
+      </div>
+
+      <button class="btn primary login-btn" type="submit">
+        ログイン <i class="fa-solid fa-arrow-right-to-bracket" style="margin-left:8px;"></i>
+      </button>
+
+      <div class="login-footer">
+        テスト用初期アカウント:<br>
+        <strong>Email:</strong> admin@example.com<br>
+        <strong>Pass:</strong> admin123
+      </div>
+    </form>
+    
+  </div>
+</div>
+
+{% endblock %}

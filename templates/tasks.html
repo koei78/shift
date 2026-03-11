@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  .task-board {
+    background-color: #6571a6; /* 画像に合わせた紫/青系の背景 */
+    border-radius: 4px;
+    padding: 24px;
+    margin: 0 auto;
+    font-family: sans-serif;
+  }
+  .task-header {
+    display: flex;
+    align-items: center;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 24px;
+    gap: 12px;
+  }
+  .task-header-icon {
+    font-size: 24px;
+  }
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px; /* 隙間を極力なくしてくっつける */
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .task-item {
+    background-color: white;
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #eef3f8;
+    transition: background-color 0.2s;
+  }
+  .task-item:hover {
+    background-color: #f8fafc;
+  }
+  .task-checkbox-container {
+    padding-right: 16px;
+  }
+  .task-checkbox {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: white;
+    transition: all 0.2s;
+  }
+  .task-checkbox:hover {
+    border-color: #999;
+  }
+  .task-checkbox.completed {
+    background-color: #4caf50;
+    border-color: #4caf50;
+  }
+  .task-checkbox.completed i {
+    color: white;
+    font-size: 14px;
+  }
+  .task-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .task-title {
+    color: #333;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .task-title.completed-text {
+    text-decoration: line-through;
+    color: #a0aec0;
+  }
+  .task-meta {
+    display: flex;
+    gap: 16px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #64748b;
+  }
+  .task-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .task-star {
+    margin-left: 16px;
+    color: #cbd5e1;
+    cursor: pointer;
+    font-size: 18px;
+    transition: color 0.2s;
+  }
+  .task-star:hover {
+    color: #fbbf24;
+  }
+  
+  .add-task-container {
+    margin-top: 30px;
+    background-color: white;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  .add-task-input {
+    border: none;
+    outline: none;
+    flex: 1;
+    font-size: 15px;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+  }
+  .add-task-input::placeholder {
+    color: #94a3b8;
+  }
+</style>
+
+<div class="task-board">
+  <div class="task-header">
+    <span class="task-header-icon">🍋</span> タスク管理
+  </div>
+  
+  <div class="task-list">
+    {% for t in tasks %}
+    <div class="task-item" onclick="openTaskModal('{{ t.id }}', '{{ t.title }}', '{{ t.user_id or '' }}', '{{ t.date or '' }}', '{{ t.deadline or '' }}', `{{ t.memo or '' }}`)">
+      
+      <!-- チェックボックス（クリックで完了/未完了切替） -->
+      <div class="task-checkbox-container" onclick="event.stopPropagation();">
+        <form action="{{ url_for('task_toggle', id=t.id) }}" method="POST" style="margin:0;">
+          <button type="submit" style="background:none; border:none; padding:0; outline:none;">
+            <div class="task-checkbox {% if t.is_completed %}completed{% endif %}">
+              {% if t.is_completed %}<i class="fa-solid fa-check"></i>{% endif %}
+            </div>
+          </button>
+        </form>
+      </div>
+      
+      <!-- タスク本文 -->
+      <div class="task-content">
+        <div class="task-title {% if t.is_completed %}completed-text{% endif %}">{{ t.title }}</div>
+        <div class="task-meta">
+          {% if t.user_name %}<span title="担当者"><i class="fa-solid fa-user" style="font-size:10px;"></i> {{ t.user_name }}</span>{% endif %}
+          {% if t.date %}<span title="日付"><i class="fa-regular fa-calendar"></i> {{ t.date }}</span>{% endif %}
+          {% if t.deadline %}<span title="期限"><i class="fa-regular fa-clock"></i> {{ t.deadline }}</span>{% endif %}
+          {% if t.memo %}<span title="メモあり"><i class="fa-solid fa-pen-to-square"></i> メモ</span>{% endif %}
+        </div>
+      </div>
+      
+      <!-- 右端のお気に入り風アイコン -->
+      <div class="task-star" onclick="event.stopPropagation(); alert('お気に入り登録（サンプル）');">
+        <i class="fa-regular fa-star"></i>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  
+  <!-- 下部の追加フォーム -->
+  <form action="{{ url_for('tasks') }}" method="POST" class="add-task-container">
+    <div class="task-checkbox-container">
+      <div class="task-checkbox" style="cursor:default; border-color:#e2e8f0;"></div>
+    </div>
+    <input type="text" name="title" id="quickAddInput" class="add-task-input" placeholder="タスクを追加（クリックして詳細を入力）" autocomplete="off" onkeydown="if(event.key==='Enter') this.form.submit();">
+    <button type="button" class="btn" style="padding: 6px 12px; margin-left: 10px;" onclick="openTaskModalForAdd()"><i class="fa-solid fa-expand"></i> 詳細</button>
+  </form>
+</div>
+
+<!-- 詳細編集モーダル (Hidden by default) -->
+<div id="taskModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+  <div class="modal-content" style="background: white; padding: 24px; border-radius: 4px; max-width: 500px; width: 90%; position: relative;" onclick="event.stopPropagation();">
+    <button class="icon-btn" type="button" style="position: absolute; top: 16px; right: 16px; border: none; background: #f0f2f5;" onclick="closeTaskModal()">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <h3 id="modalHeaderTitle" style="margin-top: 0; border-bottom: 2px solid #eef3f8; padding-bottom: 12px; color: #333;">
+      <i class="fa-solid fa-list-check"></i> タスクの詳細・編集
+    </h3>
+    
+    <form id="taskUpdateForm" method="POST" action="">
+      <div style="margin-bottom: 16px;">
+        <label style="display:block; margin-bottom:6px; font-weight:bold; color:#4a5568;">タスク名 <span style="color:red">*</span></label>
+        <input type="text" name="title" id="modalTitle" required>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display:block; margin-bottom:6px; font-weight:bold; color:#4a5568;">担当者</label>
+        <select name="user_id" id="modalUserId">
+          <option value="">-- 指定なし --</option>
+          {% for u in users %}
+            <option value="{{ u.id }}">{{ u.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display:flex; gap:16px; margin-bottom: 16px;">
+        <div style="flex:1;">
+          <label style="display:block; margin-bottom:6px; font-weight:bold; color:#4a5568;">日付</label>
+          <input type="date" name="date" id="modalDate">
+        </div>
+        <div style="flex:1;">
+          <label style="display:block; margin-bottom:6px; font-weight:bold; color:#4a5568;">期限</label>
+          <input type="date" name="deadline" id="modalDeadline">
+        </div>
+      </div>
+
+      <div style="margin-bottom: 24px;">
+        <label style="display:block; margin-bottom:6px; font-weight:bold; color:#4a5568;">メモ</label>
+        <textarea name="memo" id="modalMemo" rows="4"></textarea>
+      </div>
+
+      <div style="text-align: right;">
+        <button type="button" class="btn" onclick="closeTaskModal()">キャンセル</button>
+        <button type="submit" class="btn primary">保存する</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openTaskModalForAdd() {
+    document.getElementById('taskUpdateForm').action = "{{ url_for('tasks') }}";
+    
+    // 下のフォームに入力中の文字があれば引き継ぐ
+    let quickInput = document.getElementById('quickAddInput').value;
+    document.getElementById('modalTitle').value = quickInput;
+    
+    document.getElementById('modalUserId').value = '';
+    document.getElementById('modalDate').value = '';
+    document.getElementById('modalDeadline').value = '';
+    document.getElementById('modalMemo').value = '';
+    
+    document.getElementById('modalHeaderTitle').innerHTML = '<i class="fa-solid fa-plus"></i> タスクの新規追加';
+    document.getElementById('taskModal').style.display = 'flex';
+  }
+
+  function openTaskModal(id, title, userId, date, deadline, memo) {
+    document.getElementById('taskUpdateForm').action = "{{ url_for('tasks') }}/" + id + "/update";
+    document.getElementById('modalTitle').value = title;
+    
+    // Select the user
+    let userSelect = document.getElementById('modalUserId');
+    userSelect.value = userId === 'None' || !userId ? '' : userId;
+    
+    document.getElementById('modalDate').value = date === 'None' || !date ? '' : date;
+    document.getElementById('modalDeadline').value = deadline === 'None' || !deadline ? '' : deadline;
+    document.getElementById('modalMemo').value = memo === 'None' || !memo ? '' : memo;
+    
+    document.getElementById('modalHeaderTitle').innerHTML = '<i class="fa-solid fa-list-check"></i> タスクの詳細・編集';
+    
+    document.getElementById('taskModal').style.display = 'flex';
+  }
+
+  function closeTaskModal() {
+    document.getElementById('taskModal').style.display = 'none';
+  }
+
+  // 枠外クリックで閉じる
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+      if(e.target === this) {
+        closeTaskModal();
+      }
+    });
+  });
+</script>
+{% endblock %}

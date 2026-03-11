@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>管理：ユーザー追加（権限指定）</h2>
+
+  <div class="card" style="background:#0f1626">
+    <h3 style="margin:0 0 10px 0">新規ユーザー作成</h3>
+    <form method="post">
+      <div class="row">
+        <div style="flex:1">
+          <div class="muted">Name</div>
+          <input name="name" placeholder="山田 太郎">
+        </div>
+        <div style="flex:1">
+          <div class="muted">Email</div>
+          <input name="email" placeholder="taro@example.com">
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div style="flex:1">
+          <div class="muted">Password</div>
+          <input name="password" placeholder="password">
+        </div>
+        <div style="width:220px">
+          <div class="muted">Role</div>
+          <select name="role">
+            <option value="staff">staff</option>
+            <option value="admin">admin</option>
+          </select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" type="submit">作成</button>
+      </div>
+      <p class="muted">※パスワードは最小版なので平文。後でハッシュ化したければ言って。</p>
+    </form>
+  </div>
+
+  <div class="card" style="background:#0f1626">
+    <h3 style="margin:0 0 10px 0">ユーザー一覧</h3>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Active</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u["id"] }}</td>
+          <td><strong>{{ u["name"] }}</strong></td>
+          <td class="muted">{{ u["email"] }}</td>
+          <td>{{ u["role"] }}</td>
+          <td>{{ "ON" if u["is_active"]==1 else "OFF" }}</td>
+          <td>
+            {% if u["email"] != "admin@example.com" %}
+            <form method="post" action="{{ url_for('admin_users_toggle') }}">
+              <input type="hidden" name="user_id" value="{{ u['id'] }}">
+              <button class="btn" type="submit">{{ "無効化" if u["is_active"]==1 else "有効化" }}</button>
+            </form>
+            {% else %}
+              <span class="muted">固定admin</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

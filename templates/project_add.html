@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .project-add-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 767px) {
+    .project-add-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    input[type="text"], input[type="email"], textarea, select {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  }
+</style>
+
+<div class="card">
+  <div class="project-add-header">
+    <h2 style="margin:0;"><i class="fa-solid fa-folder-plus"></i> 新規案件作成</h2>
+    <a href="{{ url_for('projects') }}" class="btn">戻る</a>
+  </div>
+
+  <form method="post">
+    <div style="margin-bottom: 16px;">
+      <div class="muted">案件名 <span style="color:#b91c1c;">*</span></div>
+      <input type="text" name="name" placeholder="ホームページリニューアル案件" required>
+    </div>
+    
+    <div style="margin-bottom: 16px;">
+      <div class="muted">連絡先メールアドレス</div>
+      <input type="email" name="email" placeholder="client@example.com">
+    </div>
+    
+    <div style="margin-bottom: 16px;">
+      <div class="muted">案件内容</div>
+      <textarea name="description" rows="5" placeholder="案件の詳細や目的などを記載してください..."></textarea>
+    </div>
+
+    <div class="card" style="background:#f8fafc; border-color:#cbd5e1;">
+      <h3 style="margin:0 0 10px 0; font-size: 15px;">初期メンバー選択（複数選択可）</h3>
+      <select name="user_ids" multiple style="height: 150px;">
+        <option value="" disabled>-- 追加するユーザーを選択（Ctrl/Cmdキーで複数選択） --</option>
+        {% for u in users %}
+        <option value="{{ u.id }}">{{ u.name }}</option>
+        {% endfor %}
+      </select>
+      <div class="muted" style="margin-top:4px;">※後からでも追加可能です</div>
+    </div>
+
+    <div style="margin-top:24px; text-align: right;">
+      <button type="submit" class="btn primary" style="padding: 10px 30px;">案件を作成する</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
