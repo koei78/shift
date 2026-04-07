@@ -7,88 +7,103 @@
     justify-content: center;
     align-items: center;
     min-height: calc(100vh - 120px);
+    padding: 24px 16px;
   }
-  
+
   .login-card {
     background: #ffffff;
-    border: 1px solid #d1d9e6;
-    border-radius: 4px;
-    padding: 40px;
+    border: 1px solid #e4e4e7;
+    border-radius: 14px;
+    padding: 36px 32px;
     width: 100%;
     max-width: 400px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04);
+    text-align: center;
   }
-  
-  .login-header {
-    margin-bottom: 30px;
-  }
-  .login-header i {
-    font-size: 48px;
-    color: #1f6feb;
+
+  .login-header { margin-bottom: 28px; }
+
+  .login-header .login-icon-wrap {
+    width: 56px;
+    height: 56px;
+    background: #e0f2fe;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 16px;
   }
+  .login-header .login-icon-wrap i {
+    font-size: 26px;
+    color: #0ea5e9;
+  }
   .login-header h2 {
-    margin: 0;
-    font-size: 24px;
-    color: #1f2d45;
+    margin: 0 0 4px 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.01em;
   }
 
   .login-form-group {
     text-align: left;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
   .login-form-group label {
     display: block;
     font-weight: 600;
-    color: #475569;
-    margin-bottom: 8px;
-    font-size: 14px;
+    color: #374151;
+    margin-bottom: 6px;
+    font-size: 13.5px;
   }
-  
+
   .login-input {
     width: 100%;
-    padding: 12px 16px;
-    border-radius: 4px;
-    border: 1px solid #cbd5e1;
-    font-size: 16px;
-    background: #f8fafc;
-    transition: border-color 0.2s, background 0.2s;
+    padding: 10px 13px;
+    border-radius: 8px;
+    border: 1px solid #e4e4e7;
+    font-size: 14.5px;
+    background: #fafafa;
+    color: #111827;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
   }
   .login-input:focus {
     outline: none;
-    border-color: #1f6feb;
+    border-color: #0ea5e9;
     background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.1);
+    box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
   }
 
   .login-btn {
     width: 100%;
-    padding: 14px;
-    font-size: 16px;
-    font-weight: bold;
-    margin-top: 10px;
-    border-radius: 4px;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 8px;
+    border-radius: 8px;
   }
 
   .login-footer {
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid #eef3f8;
-    font-size: 13px;
-    color: #64748b;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid #f4f4f5;
+    font-size: 12.5px;
+    color: #71717a;
+    line-height: 1.7;
   }
-  .login-footer strong {
-    color: #475569;
-  }
+  .login-footer strong { color: #52525b; }
 </style>
 
 <div class="login-container">
   <div class="login-card">
     
     <div class="login-header">
-      <i class="fa-solid fa-circle-user"></i>
-      <h2>Welcome Back</h2>
-      <p class="muted" style="margin-top: 8px;">Shift App にログインしてください</p>
+      <div class="login-icon-wrap">
+        <i class="fa-solid fa-clipboard-list"></i>
+      </div>
+      <h2>DigiNest</h2>
+      <p class="muted" style="margin-top: 6px; font-size: 13.5px;">アカウントにログインしてください</p>
     </div>
 
     <form method="post">

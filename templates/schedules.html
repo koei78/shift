@@ -32,154 +32,131 @@
   }
   .section-header h3 {
     margin: 0;
-    font-size: 16px;
-    color: #333;
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
   }
-  .header-actions {
-    display: flex;
-    gap: 8px;
-  }
+  .header-actions { display: flex; gap: 6px; }
   .circle-btn {
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    border: 1px solid #ccc;
+    border: 1px solid #e4e4e7;
     background: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #666;
+    color: #52525b;
     cursor: pointer;
+    font-size: 12px;
+    transition: background 0.12s;
+    text-decoration: none;
   }
-  .circle-btn:hover {
-    background: #f0f0f0;
-  }
+  .circle-btn:hover { background: #f4f4f5; }
 
   /* 左側のカード (予定一覧) */
   .repo-card {
     background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
+    border: 1px solid #e4e4e7;
+    border-radius: 10px;
     padding: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     cursor: pointer;
-    transition: box-shadow 0.2s;
+    transition: box-shadow 0.15s, border-color 0.15s;
   }
   .repo-card:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.07);
+    border-color: #d4d4d8;
   }
   .repo-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f4f4f5;
     padding-bottom: 8px;
   }
   .repo-title {
-    font-size: 18px;
-    font-weight: bold;
-    color: #333; /* 黒系の色に変更 */
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
     display: flex;
     align-items: center;
     gap: 8px;
   }
-  .repo-title i {
-    color: #888;
-    font-size: 16px;
-  }
-  .repo-date {
-    font-size: 12px;
-    color: #888;
-  }
-  .repo-desc {
-    font-size: 14px;
-    color: #333;
-  }
+  .repo-title i { color: #0ea5e9; font-size: 14px; }
+  .repo-date { font-size: 12px; color: #71717a; }
+  .repo-desc { font-size: 13.5px; color: #374151; }
   .repo-links {
     font-size: 12px;
-    color: #333; /* 黒系の色に変更 */
+    color: #71717a;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
   }
-  .repo-links span {
-    color: #333; /* 黒系の色に変更 */
-  }
-  .repo-links .divider {
-    color: #ccc;
-  }
+  .repo-links .divider { color: #d4d4d8; }
 
-  /* 右側のカード (最近の更新) */
+  /* 右側のカード */
   .activity-card {
     background: #fff;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
+    border: 1px solid #e4e4e7;
+    border-radius: 10px;
+    overflow: hidden;
   }
   .activity-item {
-    padding: 16px;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f4f4f5;
     display: flex;
     gap: 12px;
   }
-  .activity-item:last-child {
-    border-bottom: none;
-  }
+  .activity-item:last-child { border-bottom: none; }
   .user-icon {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
-    background: #e88b9e;
-    color: #fff;
+    background: #e0f2fe;
+    color: #0284c7;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
+    font-weight: 700;
+    font-size: 13px;
     flex-shrink: 0;
   }
-  .activity-content {
-    flex: 1;
-    font-size: 13px;
-  }
+  .activity-content { flex: 1; font-size: 12.5px; }
   .activity-top {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
-  .activity-text strong {
-    color: #333;
-  }
+  .activity-text strong { color: #111827; }
   .badge {
-    background: #6c7993;
-    color: #fff;
-    padding: 2px 6px;
-    border-radius: 4px;
+    background: #f4f4f5;
+    color: #52525b;
+    padding: 2px 7px;
+    border-radius: 5px;
     font-size: 11px;
-    margin-left: 4px;
-    margin-right: 4px;
+    font-weight: 600;
+    margin-left: 3px;
+    margin-right: 3px;
   }
-  .activity-time {
-    color: #888;
-    font-size: 12px;
-    white-space: nowrap;
-  }
-  .activity-sub {
-    color: #666;
-    font-size: 12px;
-    margin-top: 4px;
-  }
+  .activity-time { color: #a1a1aa; font-size: 11.5px; white-space: nowrap; }
+  .activity-sub { color: #71717a; font-size: 12px; margin-top: 3px; }
 
   .modal-table th {
     width: 30%;
-    color: #556679;
+    color: #71717a;
     text-align: right;
-    padding-right: 15px;
-    border-right: 2px solid #eef3f8;
+    padding-right: 14px;
+    border-right: 1px solid #f4f4f5;
+    font-weight: 600;
+    font-size: 13px;
   }
   .modal-table td {
-    padding-left: 15px;
+    padding-left: 14px;
+    font-size: 13.5px;
   }
 </style>
 
@@ -204,7 +181,7 @@
               <span class="badge">{{ s.schedule_type }}</span>
               {% endif %}
               {% if s.project_name %}
-              <span class="badge" style="background:#3b82f6;">{{ s.project_name }}</span>
+              <span class="badge" style="background:#e0f2fe; color:#0369a1;">{{ s.project_name }}</span>
               {% endif %}
             </div>
             <div class="repo-date">
@@ -227,12 +204,12 @@
 
         <!-- Popup Modal (Hidden by default) -->
         <div id="modal-{{ s.id }}" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-          <div class="modal-content" style="background: white; padding: 24px; border-radius: 4px; max-width: 600px; width: 90%; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);" onclick="event.stopPropagation();">
-            <button class="icon-btn" style="position: absolute; top: 16px; right: 16px; border: none; background: #f0f7ff;" onclick="closeModal('{{ s.id }}')">
+          <div class="modal-content" style="background: white; padding: 24px; border-radius: 12px; max-width: 600px; width: 90%; position: relative; box-shadow: 0 20px 48px rgba(0,0,0,0.15);" onclick="event.stopPropagation();">
+            <button class="icon-btn" style="position: absolute; top: 16px; right: 16px;" onclick="closeModal('{{ s.id }}')">
               <i class="fa-solid fa-xmark"></i>
             </button>
-            <h3 style="margin-top: 0; border-bottom: 2px solid #eef3f8; padding-bottom: 12px; color: #333;">
-              <i class="fa-solid fa-calendar-check"></i> 予定の詳細
+            <h3 style="margin-top: 0; border-bottom: 1px solid #f4f4f5; padding-bottom: 12px; color: #111827; font-size: 15px;">
+              <i class="fa-solid fa-calendar-check" style="color:#6366f1;"></i> 予定の詳細
             </h3>
             
             <table class="modal-table" style="width: 100%; border-spacing: 0 12px; line-height: 1.5;">
@@ -245,7 +222,7 @@
               <tr><th>電話番号</th><td>{{ s.phone_number or '<span class="muted">未入力</span>'|safe }}</td></tr>
               <tr><th>先方担当者</th><td>{{ s.contact_person or '<span class="muted">未入力</span>'|safe }}</td></tr>
               <tr><th style="vertical-align: top;">メモ</th>
-                  <td style="white-space: pre-wrap; background: #f7f9fc; padding: 12px; border-radius: 4px;">{{ s.memo or '<span class="muted">なし</span>'|safe }}</td></tr>
+                  <td style="white-space: pre-wrap; background: #f4f4f5; padding: 12px; border-radius: 8px;">{{ s.memo or '<span class="muted">なし</span>'|safe }}</td></tr>
             </table>
             
             <div style="text-align: right; margin-top: 20px;">
@@ -255,7 +232,7 @@
         </div>
       {% endfor %}
     {% else %}
-      <div style="background: #fff; border: 1px solid #e0e0e0; padding: 40px; text-align: center; color: #888;">
+      <div style="background: #fff; border: 1px solid #e4e4e7; border-radius: 10px; padding: 40px; text-align: center; color: #a1a1aa;">
         登録されている予定はありません
       </div>
     {% endif %}
@@ -280,10 +257,10 @@
                 <div class="activity-text">
                   <strong>{{ r.user_name }}</strong> さんが <span class="badge">予定</span> <strong>{{ r.title }}</strong> を追加
                   {% if r.schedule_type %}
-                  <span class="badge" style="background:#e2e8f0; color:#333;">{{ r.schedule_type }}</span>
+                  <span class="badge">{{ r.schedule_type }}</span>
                   {% endif %}
                   {% if r.project_name %}
-                  <span class="badge" style="background:#e0f2fe; color:#1e40af;">{{ r.project_name }}</span>
+                  <span class="badge" style="background:#e0f2fe; color:#0369a1;">{{ r.project_name }}</span>
                   {% endif %}
                 </div>
                 <!-- 登録日をシンプルに表示 -->

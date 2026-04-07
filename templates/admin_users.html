@@ -3,7 +3,7 @@
 <div class="card">
   <h2>管理：ユーザー追加（権限指定）</h2>
 
-  <div class="card" style="background:#0f1626">
+  <div class="card" style="background:#f4f4f5">
     <h3 style="margin:0 0 10px 0">新規ユーザー作成</h3>
     <form method="post">
       <div class="row">
@@ -36,12 +36,12 @@
     </form>
   </div>
 
-  <div class="card" style="background:#0f1626">
+  <div class="card" style="background:#f4f4f5">
     <h3 style="margin:0 0 10px 0">ユーザー一覧</h3>
     <table class="table">
       <thead>
         <tr>
-          <th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Active</th><th>操作</th>
+          <th>ID</th><th>Name</th><th>Email</th><th>権限</th><th>Active</th><th>権限変更</th><th>操作</th>
         </tr>
       </thead>
       <tbody>
@@ -50,13 +50,41 @@
           <td>{{ u["id"] }}</td>
           <td><strong>{{ u["name"] }}</strong></td>
           <td class="muted">{{ u["email"] }}</td>
-          <td>{{ u["role"] }}</td>
-          <td>{{ "ON" if u["is_active"]==1 else "OFF" }}</td>
+          <td>
+            {% if u["role"] == "admin" %}
+              <span style="display:inline-block; padding:2px 8px; background:#0f172a; color:#fff; font-size:11px; border-radius:5px; font-weight:700;">管理者</span>
+            {% else %}
+              <span style="display:inline-block; padding:2px 8px; background:#e0f2fe; color:#0369a1; font-size:11px; border-radius:5px; font-weight:700;">スタッフ</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u["is_active"]==1 %}
+              <span style="font-size:12px; color:#16a34a; font-weight:600;">有効</span>
+            {% else %}
+              <span style="font-size:12px; color:#94a3b8; font-weight:600;">無効</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u["email"] != "admin@example.com" %}
+            <form method="post" action="{{ url_for('admin_users_role') }}" style="display:inline-flex; gap:6px; align-items:center;">
+              <input type="hidden" name="user_id" value="{{ u['id'] }}">
+              <select name="role" style="width:auto; padding:4px 8px; font-size:12px;">
+                <option value="staff" {% if u["role"]=="staff" %}selected{% endif %}>スタッフ</option>
+                <option value="admin" {% if u["role"]=="admin" %}selected{% endif %}>管理者</option>
+              </select>
+              <button class="btn primary" type="submit" style="padding:4px 10px; font-size:12px;">変更</button>
+            </form>
+            {% else %}
+              <span class="muted">固定</span>
+            {% endif %}
+          </td>
           <td>
             {% if u["email"] != "admin@example.com" %}
             <form method="post" action="{{ url_for('admin_users_toggle') }}">
               <input type="hidden" name="user_id" value="{{ u['id'] }}">
-              <button class="btn" type="submit">{{ "無効化" if u["is_active"]==1 else "有効化" }}</button>
+              <button class="btn {% if u['is_active']==1 %}danger{% endif %}" type="submit" style="padding:4px 10px; font-size:12px;">
+                {{ "無効化" if u["is_active"]==1 else "有効化" }}
+              </button>
             </form>
             {% else %}
               <span class="muted">固定admin</span>

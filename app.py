@@ -2,6 +2,13 @@ import os
 from datetime import datetime, timedelta, date
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 
+# .env ファイルがあれば自動で読み込む（ローカル開発用）
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
@@ -136,7 +143,21 @@ def fmt_date(d: date):
 # -----------------------------
 def db():
     if _USE_PG:
-        conn = psycopg2.connect(DATABASE_URL)
+        # Supabase pooler の user に "." が含まれるため urlparse では取れないことがある
+        # 環境変数で個別指定があればそちらを優先、なければURLをそのまま渡す
+        pg_host = os.environ.get('PG_HOST')
+        if pg_host:
+            conn = psycopg2.connect(
+                host=pg_host,
+                port=int(os.environ.get('PG_PORT', 5432)),
+                dbname=os.environ.get('PG_DB', 'postgres'),
+                user=os.environ.get('PG_USER', 'postgres'),
+                password=os.environ.get('PG_PASSWORD', ''),
+                sslmode='require',
+                connect_timeout=10,
+            )
+        else:
+            conn = psycopg2.connect(DATABASE_URL + ('?sslmode=require' if '?' not in DATABASE_URL else '&sslmode=require'))
         return _ConnWrapper(conn, pg=True)
     else:
         import sqlite3
@@ -146,7 +167,7 @@ def db():
 
 # SQLite用の型名（SERIAL→INTEGER PRIMARY KEY AUTOINCREMENT）
 def _serial():
-    return "SERIAL" if _USE_PG else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    return "SERIAL PRIMARY KEY" if _USE_PG else "INTEGER PRIMARY KEY AUTOINCREMENT"
 
 def init_db():
     conn = db()
@@ -168,8 +189,8 @@ def init_db():
     CREATE TABLE IF NOT EXISTS time_ranges (
       id {PK},
       label TEXT NOT NULL,
-      start TEXT NOT NULL,
-      end TEXT NOT NULL,
+      "start" TEXT NOT NULL,
+      "end" TEXT NOT NULL,
       sort_order INTEGER NOT NULL DEFAULT 100,
       is_active INTEGER NOT NULL DEFAULT 1
     )
@@ -286,7 +307,7 @@ def init_db():
             ("夕", "15:00", "18:00", 30, 1),
         ]
         cur.executemany(
-            "INSERT INTO time_ranges(label,start,end,sort_order,is_active) VALUES(?,?,?,?,?)",
+            'INSERT INTO time_ranges(label,"start","end",sort_order,is_active) VALUES(?,?,?,?,?)',
             seed
         )
         conn.commit()
@@ -495,6 +516,22 @@ def admin_users():
     conn.close()
     return render_template("admin_users.html", user=current_user(), users=users)
 
+@app.post("/admin/users/role")
+@admin_required
+def admin_users_role():
+    uid = request.form.get("user_id")
+    new_role = request.form.get("role")
+    if not uid or new_role not in ("staff", "admin"):
+        return redirect(url_for("admin_users"))
+    conn = db()
+    u = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    if u and u["email"] != ADMIN_EMAIL:
+        conn.execute("UPDATE users SET role=? WHERE id=?", (new_role, uid))
+        conn.commit()
+        flash(f"{u['name']} の権限を {new_role} に変更しました")
+    conn.close()
+    return redirect(url_for("admin_users"))
+
 @app.post("/admin/users/toggle")
 @admin_required
 def admin_users_toggle():
@@ -530,14 +567,14 @@ def admin_timeranges():
             flash(msg)
         else:
             conn.execute(
-                "INSERT INTO time_ranges(label,start,end,sort_order,is_active) VALUES(?,?,?,?,1)",
+                'INSERT INTO time_ranges(label,"start","end",sort_order,is_active) VALUES(?,?,?,?,1)',
                 (label, start, end, sort_order),
             )
             conn.commit()
             flash("時間帯を追加した")
 
     ranges = conn.execute(
-        "SELECT * FROM time_ranges ORDER BY sort_order, start, id"
+        'SELECT * FROM time_ranges ORDER BY sort_order, "start", id'
     ).fetchall()
     conn.close()
     return render_template("admin_timeranges.html", user=current_user(), ranges=ranges)
@@ -563,7 +600,7 @@ def admin_timeranges_update():
 
     conn = db()
     conn.execute(
-        "UPDATE time_ranges SET label=?, start=?, end=?, sort_order=?, is_active=? WHERE id=?",
+        'UPDATE time_ranges SET label=?, "start"=?, "end"=?, sort_order=?, is_active=? WHERE id=?',
         (label, start, end, sort_order, is_active, rid),
     )
     conn.commit()
@@ -603,7 +640,7 @@ def shift_submit():
 
     # time ranges
     ranges = conn.execute(
-        "SELECT * FROM time_ranges WHERE is_active=1 ORDER BY sort_order, start, id"
+        'SELECT * FROM time_ranges WHERE is_active=1 ORDER BY sort_order, "start", id'
     ).fetchall()
     valid_range_ids = {str(r["id"]) for r in ranges}
 
