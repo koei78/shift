@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta, date
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, g
 
 # .env ファイルを読み込む（dotenv未インストールでも動く手動パース）
 import pathlib
@@ -299,12 +299,17 @@ init_db()
 # Auth (session)
 # -----------------------------
 def current_user():
+    """リクエスト内でキャッシュ（g）するので DB クエリは最大1回"""
+    if "current_user" in g:
+        return g.current_user
     uid = session.get("uid")
     if not uid:
+        g.current_user = None
         return None
     conn = db()
     u = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
     conn.close()
+    g.current_user = u
     return u
 
 def login_required(fn):
@@ -808,7 +813,7 @@ def shift_team():
         rows=rows,
         range=range,
         users=users_data,
-        user=current_user(),
+        user=u_current,
         team_only=team_only,
     )
 
@@ -952,22 +957,7 @@ def team():
     WHERE u.is_active = 1
     ORDER BY u.role ASC, u.id ASC
     """
-    try:
-        users_data = conn.execute(query).fetchall()
-    except Exception as e:
-        print(f"[DEBUG team ERROR] {e}", flush=True)
-        conn.rollback()
-        users_data = conn.execute("""
-            SELECT u.id, u.name, u.role, u.email,
-                   t.name as team_name, tm.is_leader,
-                   0 as task_count, 0 as team_member_count
-            FROM users u
-            LEFT JOIN team_members tm ON u.id = tm.user_id
-            LEFT JOIN teams t ON tm.team_id = t.id
-            WHERE u.is_active = 1
-            ORDER BY u.role ASC, u.id ASC
-        """).fetchall()
-    print(f"[DEBUG team] {len(users_data)} rows", flush=True)
+    users_data = conn.execute(query).fetchall()
     conn.close()
     return render_template("team.html", user=current_user(), team_members=users_data)
 
@@ -1198,4 +1188,4 @@ def forbidden(e):
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True )
+    app.run(host='0.0.0.0', port=port, debug=False)
