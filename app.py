@@ -26,6 +26,7 @@ if not DATABASE_URL:
 
 import psycopg2
 import psycopg2.extras
+import psycopg2.pool
 
 
 # -------------------------------------------------------
@@ -73,6 +74,20 @@ class _ConnWrapper:
     def close(self):
         self._conn.close()
 
+
+class _PooledConnWrapper(_ConnWrapper):
+    """接続プールから取得した接続を close() でプールに返却するラッパー"""
+    def __init__(self, conn, pool):
+        super().__init__(conn)
+        self._pool = pool
+
+    def close(self):
+        try:
+            self._conn.reset()
+        except Exception:
+            pass
+        self._pool.putconn(self._conn)
+
 # -----------------------------
 # 最小ユーザー（固定で1人だけ seed）
 # -----------------------------
@@ -103,21 +118,32 @@ def fmt_date(d: date):
 # -----------------------------
 # DB
 # -----------------------------
+_pool = None
+
+def _get_pool():
+    global _pool
+    if _pool is None:
+        pg_host = os.environ.get('PG_HOST')
+        if pg_host:
+            kwargs = dict(
+                host=pg_host,
+                port=int(os.environ.get('PG_PORT', 5432)),
+                dbname=os.environ.get('PG_DB', 'postgres'),
+                user=os.environ.get('PG_USER', 'postgres'),
+                password=os.environ.get('PG_PASSWORD', ''),
+                sslmode='require',
+                connect_timeout=10,
+            )
+        else:
+            kwargs = dict(dsn=DATABASE_URL + ('?sslmode=require' if '?' not in DATABASE_URL else '&sslmode=require'))
+        _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, **kwargs)
+    return _pool
+
 def db():
-    pg_host = os.environ.get('PG_HOST')
-    if pg_host:
-        conn = psycopg2.connect(
-            host=pg_host,
-            port=int(os.environ.get('PG_PORT', 5432)),
-            dbname=os.environ.get('PG_DB', 'postgres'),
-            user=os.environ.get('PG_USER', 'postgres'),
-            password=os.environ.get('PG_PASSWORD', ''),
-            sslmode='require',
-            connect_timeout=10,
-        )
-    else:
-        conn = psycopg2.connect(DATABASE_URL + ('?sslmode=require' if '?' not in DATABASE_URL else '&sslmode=require'))
-    return _ConnWrapper(conn)
+    pool = _get_pool()
+    conn = pool.getconn()
+    conn.autocommit = False
+    return _PooledConnWrapper(conn, pool)
 
 def _serial():
     return "SERIAL PRIMARY KEY"
@@ -727,49 +753,48 @@ def shift_team():
     range=[f'{r["label"]} {r["start"]}-{r["end"]}' for r in ranges]
     range_map = {r["id"]: f'{r["label"]} {r["start"]}-{r["end"]}' for r in ranges}
     
-    users_data={}
+    # 全スロットを1回のクエリで取得
+    sub_ids = [s["id"] for s in subs]
+    all_slots = []
+    if sub_ids:
+        placeholders = ",".join(["?"] * len(sub_ids))
+        all_slots = conn.execute(
+            f"SELECT * FROM slots WHERE submission_id IN ({placeholders}) ORDER BY day, slot_index",
+            sub_ids
+        ).fetchall()
+
+    # submission_id → {(day, time_range_id): True} のマップを構築
+    slot_set = {}
+    slot_by_sub = {}
+    for sl in all_slots:
+        sid = sl["submission_id"]
+        slot_set.setdefault(sid, set()).add((sl["day"], sl["time_range_id"]))
+        slot_by_sub.setdefault(sid, []).append(sl)
+
+    # users_data を Python で組み立て（クエリなし）
+    users_data = {}
     for u in users:
-        user_date=[]
-
-
         sub = sub_by_uid.get(u["id"])
-        if sub is not None:
-            sub_id = sub["id"]
-        else:
-            sub_id = None
-
+        sub_id = sub["id"] if sub else None
+        filled = slot_set.get(sub_id, set())
+        user_date = []
         for date in dates:
-            for r in ranges: 
-                slots = conn.execute(
-                    """
-                    SELECT * FROM slots
-                    WHERE submission_id=? AND day=? AND time_range_id=?
-                    ORDER BY slot_index
-                    """,
-                (sub_id, date.strftime("%Y-%m-%d"), r["id"])).fetchall()
-                if slots:
-                    user_date.append("●")
-                else:
-                    user_date.append("×")
-        users_data[u["name"]]=user_date
+            day_str = date.strftime("%Y-%m-%d")
+            for r in ranges:
+                user_date.append("●" if (day_str, r["id"]) in filled else "×")
+        users_data[u["name"]] = user_date
 
     rows = []
     for u in users:
         sub = sub_by_uid.get(u["id"])
         status = "未作成" if not sub else ("提出済み" if sub["status"] == "submitted" else "下書き")
-
         by_date = {fmt_date(d): [] for d in dates}
         if sub:
-            slots = conn.execute(
-                "SELECT * FROM slots WHERE submission_id=? ORDER BY day, slot_index",
-                (sub["id"],),
-            ).fetchall()
-            for sl in slots:
+            for sl in slot_by_sub.get(sub["id"], []):
                 if sl["time_range_id"]:
                     label = range_map.get(sl["time_range_id"], f"ID:{sl['time_range_id']}")
                     extra = f"（{sl['note']}）" if sl["note"] else ""
                     by_date[sl["day"]].append(label + extra)
-
         rows.append({"name": u["name"], "status": status, "by_date": by_date})
 
     conn.close()
@@ -1173,4 +1198,4 @@ def forbidden(e):
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True )
