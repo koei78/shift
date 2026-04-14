@@ -1,52 +1,35 @@
+import os
+import pathlib
+
+# .env を読み込む
+_env_path = pathlib.Path(__file__).parent / ".env"
+for _line in _env_path.read_text(encoding="utf-8").splitlines():
+    _line = _line.strip()
+    if _line and not _line.startswith("#") and "=" in _line:
+        _k, _v = _line.split("=", 1)
+        os.environ.setdefault(_k.strip(), _v.strip())
+
 import psycopg2
+import psycopg2.extras
 
-# テスト1: Session Pooler (port 5432)
-print("テスト1: Session Pooler port 5432...")
-try:
-    conn = psycopg2.connect(
-        host="aws-1-ap-northeast-1.pooler.supabase.com",
-        port=5432,
-        dbname="postgres",
-        user="postgres.acpxaigmqtyejdrdgxdl",
-        password="koei90811478",
-        sslmode="require",
-        connect_timeout=10,
-    )
-    print("→ 成功!")
-    conn.close()
-except Exception as e:
-    print(f"→ 失敗: {e}")
+conn = psycopg2.connect(
+    host=os.environ["PG_HOST"],
+    port=int(os.environ.get("PG_PORT", 5432)),
+    dbname=os.environ.get("PG_DB", "postgres"),
+    user=os.environ["PG_USER"],
+    password=os.environ["PG_PASSWORD"],
+    sslmode="require",
+)
+cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-# テスト2: Transaction Pooler (port 6543)
-print("\nテスト2: Transaction Pooler port 6543...")
-try:
-    conn = psycopg2.connect(
-        host="aws-1-ap-northeast-1.pooler.supabase.com",
-        port=6543,
-        dbname="postgres",
-        user="postgres.acpxaigmqtyejdrdgxdl",
-        password="koei90811478",
-        sslmode="require",
-        connect_timeout=10,
-    )
-    print("→ 成功!")
-    conn.close()
-except Exception as e:
-    print(f"→ 失敗: {e}")
+cur.execute("SELECT COUNT(*) as cnt FROM users")
+print("users:", cur.fetchone()["cnt"])
 
-# テスト3: Direct接続 (IPv6)
-print("\nテスト3: Direct接続...")
-try:
-    conn = psycopg2.connect(
-        host="db.acpxaigmqtyejdrdgxdl.supabase.co",
-        port=5432,
-        dbname="postgres",
-        user="postgres",
-        password="koei90811478",
-        sslmode="require",
-        connect_timeout=10,
-    )
-    print("→ 成功!")
-    conn.close()
-except Exception as e:
-    print(f"→ 失敗: {e}")
+cur.execute("SELECT COUNT(*) as cnt FROM submissions")
+print("submissions:", cur.fetchone()["cnt"])
+
+cur.execute("SELECT id, name, email, is_active FROM users ORDER BY id")
+for r in cur.fetchall():
+    print(f" - {r['id']} {r['name']} is_active={r['is_active']}")
+
+conn.close()

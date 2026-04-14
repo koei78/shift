@@ -2,97 +2,35 @@ import os
 from datetime import datetime, timedelta, date
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 
-# .env ファイルがあれば自動で読み込む（ローカル開発用）
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
+# .env ファイルを読み込む（dotenv未インストールでも動く手動パース）
+import pathlib
+_env_path = pathlib.Path(__file__).parent / ".env"
+if _env_path.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(_env_path, override=True)
+    except ImportError:
+        # dotenvがなければ手動でパース
+        for _line in _env_path.read_text(encoding="utf-8").splitlines():
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
-_USE_PG = bool(DATABASE_URL)
 
-if _USE_PG:
-    import psycopg2
-    import psycopg2.extras
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL が設定されていません。.env に Supabase の接続文字列を設定してください。")
+
+import psycopg2
+import psycopg2.extras
 
 
 # -------------------------------------------------------
-# DB abstraction: PostgreSQL (Render) / SQLite (local)
+# DB abstraction: Supabase (PostgreSQL) のみ
 # -------------------------------------------------------
-class _CursorWrapper:
-    """SQLite cursor を psycopg2 cursor 風に見せるラッパー"""
-    def __init__(self, cur):
-        self._cur = cur
-
-    def execute(self, sql, params=()):
-        self._cur.execute(sql, params)
-        return self
-
-    def executemany(self, sql, params_list):
-        self._cur.executemany(sql, params_list)
-
-    def fetchone(self):
-        row = self._cur.fetchone()
-        return dict(row) if row else None
-
-    def fetchall(self):
-        return [dict(r) for r in self._cur.fetchall()]
-
-    def __getitem__(self, key):
-        # COUNT(*) AS c などを cursor.fetchone()["c"] 形式でアクセスできるよう
-        return self.fetchone()[key]
-
-
-class _ConnWrapper:
-    def __init__(self, conn, pg=False):
-        self._conn = conn
-        self._pg = pg
-
-    def execute(self, sql, params=()):
-        if self._pg:
-            cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            cur.execute(sql.replace("?", "%s"), params)
-            return cur
-        else:
-            import sqlite3
-            cur = self._conn.execute(sql, params)
-            # sqlite3.Row をラップして dict 風アクセスに統一
-            return _SqliteCursorResult(cur)
-
-    def cursor(self):
-        if self._pg:
-            return _PgCursorWrapper(
-                self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            )
-        else:
-            return _CursorWrapper(self._conn.cursor())
-
-    def commit(self):
-        self._conn.commit()
-
-    def rollback(self):
-        self._conn.rollback()
-
-    def close(self):
-        self._conn.close()
-
-
-class _SqliteCursorResult:
-    """sqlite3 の execute 結果を fetchone/fetchall で dict を返すラッパー"""
-    def __init__(self, cur):
-        self._cur = cur
-
-    def fetchone(self):
-        row = self._cur.fetchone()
-        return dict(row) if row else None
-
-    def fetchall(self):
-        return [dict(r) for r in self._cur.fetchall()]
-
-
 class _PgCursorWrapper:
     """psycopg2 cursor ラッパー（? → %s 変換付き）"""
     def __init__(self, cur):
@@ -110,6 +48,30 @@ class _PgCursorWrapper:
 
     def fetchall(self):
         return self._cur.fetchall()
+
+
+class _ConnWrapper:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql, params=()):
+        cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql.replace("?", "%s"), params)
+        return cur
+
+    def cursor(self):
+        return _PgCursorWrapper(
+            self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        )
+
+    def commit(self):
+        self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        self._conn.close()
 
 # -----------------------------
 # 最小ユーザー（固定で1人だけ seed）
@@ -142,32 +104,23 @@ def fmt_date(d: date):
 # DB
 # -----------------------------
 def db():
-    if _USE_PG:
-        # Supabase pooler の user に "." が含まれるため urlparse では取れないことがある
-        # 環境変数で個別指定があればそちらを優先、なければURLをそのまま渡す
-        pg_host = os.environ.get('PG_HOST')
-        if pg_host:
-            conn = psycopg2.connect(
-                host=pg_host,
-                port=int(os.environ.get('PG_PORT', 5432)),
-                dbname=os.environ.get('PG_DB', 'postgres'),
-                user=os.environ.get('PG_USER', 'postgres'),
-                password=os.environ.get('PG_PASSWORD', ''),
-                sslmode='require',
-                connect_timeout=10,
-            )
-        else:
-            conn = psycopg2.connect(DATABASE_URL + ('?sslmode=require' if '?' not in DATABASE_URL else '&sslmode=require'))
-        return _ConnWrapper(conn, pg=True)
+    pg_host = os.environ.get('PG_HOST')
+    if pg_host:
+        conn = psycopg2.connect(
+            host=pg_host,
+            port=int(os.environ.get('PG_PORT', 5432)),
+            dbname=os.environ.get('PG_DB', 'postgres'),
+            user=os.environ.get('PG_USER', 'postgres'),
+            password=os.environ.get('PG_PASSWORD', ''),
+            sslmode='require',
+            connect_timeout=10,
+        )
     else:
-        import sqlite3
-        conn = sqlite3.connect(os.environ.get('DB_PATH', 'app.db'))
-        conn.row_factory = sqlite3.Row
-        return _ConnWrapper(conn, pg=False)
+        conn = psycopg2.connect(DATABASE_URL + ('?sslmode=require' if '?' not in DATABASE_URL else '&sslmode=require'))
+    return _ConnWrapper(conn)
 
-# SQLite用の型名（SERIAL→INTEGER PRIMARY KEY AUTOINCREMENT）
 def _serial():
-    return "SERIAL PRIMARY KEY" if _USE_PG else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    return "SERIAL PRIMARY KEY"
 
 def init_db():
     conn = db()
@@ -974,7 +927,22 @@ def team():
     WHERE u.is_active = 1
     ORDER BY u.role ASC, u.id ASC
     """
-    users_data = conn.execute(query).fetchall()
+    try:
+        users_data = conn.execute(query).fetchall()
+    except Exception as e:
+        print(f"[DEBUG team ERROR] {e}", flush=True)
+        conn.rollback()
+        users_data = conn.execute("""
+            SELECT u.id, u.name, u.role, u.email,
+                   t.name as team_name, tm.is_leader,
+                   0 as task_count, 0 as team_member_count
+            FROM users u
+            LEFT JOIN team_members tm ON u.id = tm.user_id
+            LEFT JOIN teams t ON tm.team_id = t.id
+            WHERE u.is_active = 1
+            ORDER BY u.role ASC, u.id ASC
+        """).fetchall()
+    print(f"[DEBUG team] {len(users_data)} rows", flush=True)
     conn.close()
     return render_template("team.html", user=current_user(), team_members=users_data)
 
