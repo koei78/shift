@@ -25,7 +25,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
 if not DATABASE_URL and not os.environ.get('PG_HOST'):
-    raise RuntimeError("DATABASE_URL is not set. Set it to the Render PostgreSQL connection string.")
+    raise RuntimeError("DATABASE_URL is not set. Set it to the Supabase PostgreSQL connection string.")
 
 import psycopg2
 import psycopg2.extras
@@ -33,7 +33,7 @@ import psycopg2.pool
 
 
 # -------------------------------------------------------
-# DB abstraction: PostgreSQL (Render or compatible providers)
+# DB abstraction: Supabase PostgreSQL
 # -------------------------------------------------------
 class _PgCursorWrapper:
     """psycopg2 cursor wrapper that converts ? placeholders to %s."""

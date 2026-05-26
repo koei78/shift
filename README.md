@@ -33,12 +33,12 @@ python app.py
 
 ## Database
 
-This app uses PostgreSQL.
+This app uses Supabase PostgreSQL.
 
-On Render, `render.yaml` creates `shift-db` and injects its connection string into
-the web service as `DATABASE_URL`.
+On Render, set `DATABASE_URL` in the web service environment variables to your
+Supabase PostgreSQL connection string.
 
-For local development, set `DATABASE_URL` in `.env` to the Render PostgreSQL
-external connection string. If you use separate PostgreSQL variables instead,
-set `PG_HOST`, `PG_PORT`, `PG_DB`, `PG_USER`, and `PG_PASSWORD`.
+For local development, set `DATABASE_URL` in `.env` to the same Supabase
+connection string. If you use separate PostgreSQL variables instead, set
+`PG_HOST`, `PG_PORT`, `PG_DB`, `PG_USER`, and `PG_PASSWORD`.
 

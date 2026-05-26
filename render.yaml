@@ -1,9 +1,3 @@
-databases:
-  - name: shift-db
-    databaseName: shift_app
-    user: shift_user
-    plan: free
-
 services:
   - type: web
     name: shift-app-admin
@@ -15,6 +9,4 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        fromDatabase:
-          name: shift-db
-          property: connectionString
+        sync: false
