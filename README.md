@@ -31,4 +31,14 @@ python app.py
 - Email: admin@example.com
 - Pass:  admin123
 
-SQLiteのDBは app.db が同じフォルダに生成されます。
+## Database
+
+This app uses PostgreSQL.
+
+On Render, `render.yaml` creates `shift-db` and injects its connection string into
+the web service as `DATABASE_URL`.
+
+For local development, set `DATABASE_URL` in `.env` to the Render PostgreSQL
+external connection string. If you use separate PostgreSQL variables instead,
+set `PG_HOST`, `PG_PORT`, `PG_DB`, `PG_USER`, and `PG_PASSWORD`.
+

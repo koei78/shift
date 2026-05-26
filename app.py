@@ -1,8 +1,11 @@
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, date
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, g
 
-# .env ファイルを読み込む（dotenv未インストールでも動く手動パース）
+# .env file loading. Falls back to manual parsing if python-dotenv is unavailable.
 import pathlib
 _env_path = pathlib.Path(__file__).parent / ".env"
 if _env_path.exists():
@@ -10,7 +13,7 @@ if _env_path.exists():
         from dotenv import load_dotenv
         load_dotenv(_env_path, override=True)
     except ImportError:
-        # dotenvがなければ手動でパース
+        # Manual parse when dotenv is unavailable.
         for _line in _env_path.read_text(encoding="utf-8").splitlines():
             _line = _line.strip()
             if _line and not _line.startswith("#") and "=" in _line:
@@ -21,8 +24,8 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL が設定されていません。.env に Supabase の接続文字列を設定してください。")
+if not DATABASE_URL and not os.environ.get('PG_HOST'):
+    raise RuntimeError("DATABASE_URL is not set. Set it to the Render PostgreSQL connection string.")
 
 import psycopg2
 import psycopg2.extras
@@ -30,10 +33,10 @@ import psycopg2.pool
 
 
 # -------------------------------------------------------
-# DB abstraction: Supabase (PostgreSQL) のみ
+# DB abstraction: PostgreSQL (Render or compatible providers)
 # -------------------------------------------------------
 class _PgCursorWrapper:
-    """psycopg2 cursor ラッパー（? → %s 変換付き）"""
+    """psycopg2 cursor wrapper that converts ? placeholders to %s."""
     def __init__(self, cur):
         self._cur = cur
 
@@ -76,7 +79,7 @@ class _ConnWrapper:
 
 
 class _PooledConnWrapper(_ConnWrapper):
-    """接続プールから取得した接続を close() でプールに返却するラッパー"""
+    """Return pooled connections to the pool on close()."""
     def __init__(self, conn, pool):
         super().__init__(conn)
         self._pool = pool
@@ -89,12 +92,12 @@ class _PooledConnWrapper(_ConnWrapper):
         self._pool.putconn(self._conn)
 
 # -----------------------------
-# 最小ユーザー（固定で1人だけ seed）
+# Minimal fixed admin seed user.
 # -----------------------------
 ADMIN_EMAIL = "admin@example.com"
 ADMIN_PASSWORD = "admin123"
 
-# JST（ナイーブで扱う簡略版）
+# JST helper.
 def now_jst():
     return datetime.utcnow() + timedelta(hours=9)
 
@@ -108,7 +111,7 @@ def week_dates(week_start: date):
     return [week_start + timedelta(days=i) for i in range(7)]
 
 def deadline_for_target_week(week_start: date) -> datetime:
-    # 次週の月曜(week_start)の「直前の金曜 23:59」
+    # Friday 23:59 immediately before the target week.
     friday = week_start - timedelta(days=3)
     return datetime(friday.year, friday.month, friday.day, 23, 59, 0)
 
@@ -123,19 +126,23 @@ _pool = None
 def _get_pool():
     global _pool
     if _pool is None:
-        pg_host = os.environ.get('PG_HOST')
-        if pg_host:
+        if DATABASE_URL:
+            sslmode = os.environ.get('DB_SSLMODE')
+            dsn = DATABASE_URL
+            if sslmode and 'sslmode=' not in dsn:
+                dsn += ('&' if '?' in dsn else '?') + f'sslmode={sslmode}'
+            kwargs = dict(dsn=dsn)
+        else:
+            pg_host = os.environ.get('PG_HOST')
             kwargs = dict(
                 host=pg_host,
                 port=int(os.environ.get('PG_PORT', 5432)),
                 dbname=os.environ.get('PG_DB', 'postgres'),
                 user=os.environ.get('PG_USER', 'postgres'),
                 password=os.environ.get('PG_PASSWORD', ''),
-                sslmode='require',
+                sslmode=os.environ.get('DB_SSLMODE', 'require'),
                 connect_timeout=10,
             )
-        else:
-            kwargs = dict(dsn=DATABASE_URL + ('?sslmode=require' if '?' not in DATABASE_URL else '&sslmode=require'))
         _pool = psycopg2.pool.ThreadedConnectionPool(1, 10, **kwargs)
     return _pool
 
@@ -147,6 +154,34 @@ def db():
 
 def _serial():
     return "SERIAL PRIMARY KEY"
+
+
+def _send_smtp(to_email: str, subject: str, body: str) -> tuple[bool, str]:
+    """Send mail by SMTP. Return (False, reason) when SMTP is not configured."""
+    host = os.environ.get("SMTP_HOST", "")
+    user = os.environ.get("SMTP_USER", "")
+    password = os.environ.get("SMTP_PASSWORD", "")
+    port = int(os.environ.get("SMTP_PORT", 587))
+    from_addr = os.environ.get("SMTP_FROM", user)
+
+    if not host or not user or not password:
+        return False, "SMTP未設定"
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = from_addr
+        msg["To"] = to_email
+        msg.attach(MIMEText(body, "plain", "utf-8"))
+
+        with smtplib.SMTP(host, port, timeout=10) as srv:
+            srv.ehlo()
+            srv.starttls()
+            srv.login(user, password)
+            srv.sendmail(from_addr, [to_email], msg.as_string())
+        return True, ""
+    except Exception as e:
+        return False, str(e)
 
 def init_db():
     conn = db()
@@ -266,9 +301,24 @@ def init_db():
       UNIQUE(project_id, user_id)
     )
     """)
+    cur.execute(f"""
+    CREATE TABLE IF NOT EXISTS mail_logs (
+      id {PK},
+      project_id INTEGER,
+      user_id INTEGER NOT NULL,
+      to_email TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      body TEXT,
+      sent_at TEXT NOT NULL,
+      is_sent INTEGER NOT NULL DEFAULT 0,
+      error_msg TEXT,
+      FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE SET NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+    """)
     conn.commit()
 
-    # admin seed（最低限）
+    # Minimal admin seed.
     cur.execute("SELECT id FROM users WHERE email=?", (ADMIN_EMAIL,))
     if not cur.fetchone():
         cur.execute(
@@ -277,7 +327,7 @@ def init_db():
         )
         conn.commit()
 
-    # time range seed（0件だと選べないので最低限）
+    # Minimal time range seed.
     cur.execute("SELECT COUNT(*) AS c FROM time_ranges")
     if cur.fetchone()["c"] == 0:
         seed = [
@@ -299,7 +349,7 @@ init_db()
 # Auth (session)
 # -----------------------------
 def current_user():
-    """リクエスト内でキャッシュ（g）するので DB クエリは最大1回"""
+    """Cache the current user in g for the duration of the request."""
     if "current_user" in g:
         return g.current_user
     uid = session.get("uid")
@@ -404,7 +454,7 @@ def dashboard():
         (u["id"], fmt_date(ws)),
     ).fetchone()
     
-    # 1. 自分が関わっている案件
+    # 1. Projects the current user belongs to.
     my_projects = conn.execute("""
         SELECT p.* FROM projects p
         JOIN project_members pm ON p.id = pm.project_id
@@ -412,14 +462,14 @@ def dashboard():
         ORDER BY p.created_at DESC
     """, (u["id"],)).fetchall()
 
-    # 2. 自分の未完了タスク
+    # 2. Incomplete tasks for the current user.
     my_tasks = conn.execute("""
         SELECT * FROM tasks 
         WHERE user_id = ? AND is_completed = 0 
         ORDER BY deadline ASC, id ASC
     """, (u["id"],)).fetchall()
 
-    # 3. チームメイト
+    # 3. Teammates.
     my_teammates = conn.execute("""
         SELECT u.id, u.name, u.email, tm.is_leader 
         FROM users u 
@@ -436,7 +486,7 @@ def dashboard():
     """, (u["id"],)).fetchone()
     my_team_name = my_team["name"] if my_team else "未所属"
 
-    # 4. 直近のスケジュール（今日以降のもの）
+    # 4. Upcoming schedules from today onward.
     today_str = now_jst().strftime('%Y-%m-%d')
     my_schedules = conn.execute("""
         SELECT s.*, p.name as project_name 
@@ -597,11 +647,11 @@ def admin_timeranges_update():
 def admin_timeranges_delete():
     rid = request.form.get("id")
     conn = db()
-    # 参照されていても壊れないように論理削除に寄せる（is_active=0）
+    # Use logical deletion so existing references remain valid.
     conn.execute("UPDATE time_ranges SET is_active=0 WHERE id=?", (rid,))
     conn.commit()
     conn.close()
-    flash("無効化した")
+    flash("無効化しました")
     return redirect(url_for("admin_timeranges"))
 
 # -------- Shifts --------
@@ -609,12 +659,12 @@ def admin_timeranges_delete():
 @login_required
 def shift_submit():
     u = current_user()
-    # シフト提出は「次週固定」（週移動はできない）
+    # Shift submission targets next week only.
     ws = target_week_start()
     dates = week_dates(ws)
     deadline = deadline_for_target_week(ws)
     #locked = is_locked(ws)
-    locked = False # 締切ロジックは一旦外す（管理者が締切後も編集できるようにするため）
+    locked = False  # Deadline locking is currently disabled.
 
     if locked and u["role"] != "admin" and request.method == "POST":
         flash("締切後なので編集できません。")
@@ -656,7 +706,7 @@ def shift_submit():
             selected_map.setdefault(r["day"], set()).add(str(r["time_range_id"]))
 
     if request.method == "POST":
-        # validate and upsert (multiple selections per日付)
+        # validate and upsert (multiple selections per日仁E
         for d in dates:
             day = fmt_date(d)
             tids = request.form.getlist(f"{day}__tid")
@@ -715,8 +765,7 @@ def shift_team():
     u_current = current_user()
     team_only = request.args.get("team_only") == "1"
     
-    # デフォルトは「今週（今週の月曜〜日曜）」を表示。
-    # ?week_start=YYYY-MM-DD が指定された場合は、その日付を含む週（月曜始まり）を表示。
+    # Default to the current week. week_start selects the Monday-starting week.
     qs = (request.args.get("week_start") or "").strip()
     if qs:
         try:
@@ -734,10 +783,10 @@ def shift_team():
     conn = db()
     
     if team_only:
-        # 自分が所属しているチームのIDを取得
+        # Find the current user's team.
         my_team = conn.execute("SELECT team_id FROM team_members WHERE user_id=?", (u_current["id"],)).fetchone()
         if my_team:
-            # 同じチームのユーザーに絞り込む
+            # Restrict to users in the same team.
             users = conn.execute("""
                 SELECT u.* FROM users u
                 JOIN team_members tm ON u.id = tm.user_id
@@ -745,8 +794,7 @@ def shift_team():
                 ORDER BY u.id
             """, (my_team["team_id"],)).fetchall()
         else:
-            # チーム無所属なら自分のみ表示等にするか、または空にする
-            # ここでは便宜上、自分のみとする
+            # If the user has no team, show only the current user.
             users = conn.execute("SELECT * FROM users WHERE id=? AND is_active=1", (u_current["id"],)).fetchall()
     else:
         users = conn.execute("SELECT * FROM users WHERE is_active=1 ORDER BY id").fetchall()
@@ -758,7 +806,7 @@ def shift_team():
     range=[f'{r["label"]} {r["start"]}-{r["end"]}' for r in ranges]
     range_map = {r["id"]: f'{r["label"]} {r["start"]}-{r["end"]}' for r in ranges}
     
-    # 全スロットを1回のクエリで取得
+    # Fetch all slots in one query.
     sub_ids = [s["id"] for s in subs]
     all_slots = []
     if sub_ids:
@@ -768,7 +816,7 @@ def shift_team():
             sub_ids
         ).fetchall()
 
-    # submission_id → {(day, time_range_id): True} のマップを構築
+    # submission_id ↁE{(day, time_range_id): True} のマップを構篁E
     slot_set = {}
     slot_by_sub = {}
     for sl in all_slots:
@@ -776,7 +824,7 @@ def shift_team():
         slot_set.setdefault(sid, set()).add((sl["day"], sl["time_range_id"]))
         slot_by_sub.setdefault(sid, []).append(sl)
 
-    # users_data を Python で組み立て（クエリなし）
+    # Build users_data in Python without additional queries.
     users_data = {}
     for u in users:
         sub = sub_by_uid.get(u["id"])
@@ -786,7 +834,7 @@ def shift_team():
         for date in dates:
             day_str = date.strftime("%Y-%m-%d")
             for r in ranges:
-                user_date.append("●" if (day_str, r["id"]) in filled else "×")
+                user_date.append("○" if (day_str, r["id"]) in filled else "×")
         users_data[u["name"]] = user_date
 
     rows = []
@@ -822,7 +870,7 @@ def shift_team():
 @login_required
 def schedules():
     conn = db()
-    # 予定が近い順（日付・時刻の昇順）
+    # Upcoming schedules ordered by date and time.
     schedules_data = conn.execute("""
         SELECT s.*, u.name as user_name, p.name as project_name
         FROM schedules s
@@ -831,7 +879,7 @@ def schedules():
         ORDER BY s.date ASC, s.time ASC
     """).fetchall()
 
-    # 最近追加されたスケジュール（作成日時の降順）
+    # Recently added schedules ordered by creation time.
     recent_schedules_data = conn.execute("""
         SELECT s.*, u.name as user_name, p.name as project_name
         FROM schedules s 
@@ -1011,7 +1059,7 @@ def admin_team_edit(team_id):
             user_ids = request.form.getlist("user_ids")
             if user_ids:
                 for uid in user_ids:
-                    # 別のチームにいる場合はそこから削除（1人1チームとする）
+                    # A user can belong to only one team.
                     conn.execute("DELETE FROM team_members WHERE user_id=?", (uid,))
                     conn.execute("INSERT INTO team_members (team_id, user_id, is_leader) VALUES (?, ?, 0)", (team_id, uid))
                 conn.commit()
@@ -1048,7 +1096,7 @@ def admin_team_edit(team_id):
         ORDER BY tm.is_leader DESC, u.name ASC
     """, (team_id,)).fetchall()
     
-    # いずれかのチームに所属しているユーザーは候補から除外（一人のユーザーは1つのチームにしか所属できない）
+    # Exclude users already assigned to any team.
     available_users = conn.execute("""
         SELECT id, name FROM users 
         WHERE is_active=1 AND id NOT IN (SELECT user_id FROM team_members)
@@ -1170,7 +1218,7 @@ def project_detail(id):
         ORDER BY u.name ASC
     """, (id,)).fetchall()
     
-    # 追加可能なメンバーのリスト
+    # Users available to add as members.
     member_ids = [m["id"] for m in members]
     if member_ids:
         placeholders = ",".join("?" * len(member_ids))
