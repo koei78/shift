@@ -88,24 +88,28 @@
   </style>
 
   <div class="submit-nav">
-    <span class="nav-circle nav-arrow disabled" aria-hidden="true">
+    <a class="nav-circle nav-arrow"
+       href="{{ url_for('shift_submit', week_start=prev_week_start.strftime('%Y-%m-%d')) }}"
+       aria-label="前の週">
       <i class="fa-solid fa-chevron-left"></i>
-    </span>
+    </a>
     <div class="nav-center">
-      <span>{{ week_start.strftime('%Y/%m') }}</span>
+      <span>{{ week_start.strftime('%Y/%m/%d') }}〜{{ week_end.strftime('%m/%d') }}</span>
       <i class="fa-regular fa-calendar"></i>
     </div>
-    <span class="nav-circle nav-arrow next disabled" aria-hidden="true">
+    <a class="nav-circle nav-arrow next"
+       href="{{ url_for('shift_submit', week_start=next_week_start.strftime('%Y-%m-%d')) }}"
+       aria-label="次の週">
       <i class="fa-solid fa-chevron-right"></i>
-    </span>
+    </a>
   </div>
 
-  <div class="muted nav-sub">対象週：{{ week_start }} 〜 {{ week_end }} ／ 締切：{{ deadline_at }}</div>
+  <div class="muted nav-sub">対象週：{{ week_start }} 〜 {{ week_end }} ／ 締切なし</div>
   {% if locked and user["role"] != "admin" %}
     <div class="flash">締切後なので編集できません。</div>
   {% endif %}
 
-  <form method="post">
+  <form method="post" action="{{ url_for('shift_submit', week_start=week_start.strftime('%Y-%m-%d')) }}">
     <table class="shift-table">
       <thead>
         <tr>

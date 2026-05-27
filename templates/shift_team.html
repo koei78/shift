@@ -118,6 +118,23 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     display: block;
   }
+  .user-count {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 3px;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .user-count.is-empty {
+    background: #f1f5f9;
+    color: #94a3b8;
+  }
 
   .td-on {
     padding: 0; text-align: center; vertical-align: middle;
@@ -375,12 +392,17 @@
       <tbody>
         {% for user in users %}
           <tr>
-            <td class="td-user"><span class="user-label">{{ user }}</span></td>
+            <td class="td-user">
+              <span class="user-label">{{ user }}</span>
+              <span class="user-count {% if user_shift_counts.get(user, 0) == 0 %}is-empty{% endif %}">
+                {{ user_shift_counts.get(user, 0) }}件
+              </span>
+            </td>
             {% set ns = namespace(pos=0) %}
             {% for d in week_dates %}
               {% set dow = d.weekday() %}
               {% for r in range %}
-                {% if users[user][ns.pos] == "●" %}
+                {% if users[user][ns.pos] %}
                   <td class="td-on {% if loop.last %}day-end{% endif %} {% if dow==5 %}is-sat{% elif dow==6 %}is-sun{% endif %}">
                     <span class="on-badge"><i class="fa-solid fa-check"></i></span>
                   </td>
@@ -455,10 +477,15 @@
             {% for user in users %}
               {% set slot_start = di * (range|length) %}
               <tr>
-                <td class="m-td-user">{{ user }}</td>
+                <td class="m-td-user">
+                  <span class="user-label">{{ user }}</span>
+                  <span class="user-count {% if user_shift_counts.get(user, 0) == 0 %}is-empty{% endif %}">
+                    {{ user_shift_counts.get(user, 0) }}件
+                  </span>
+                </td>
                 {% for r in range %}
                   {% set pos = slot_start + loop.index0 %}
-                  {% if users[user][pos] == "●" %}
+                  {% if users[user][pos] %}
                     <td class="m-td-on {% if dow==5 %}is-sat{% elif dow==6 %}is-sun{% endif %}">
                       <i class="fa-solid fa-check"></i>
                     </td>

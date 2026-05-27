@@ -5,8 +5,7 @@
     <div>
       <h2>ダッシュボード</h2>
       <div class="muted">対象週：{{ week_start }} 〜 {{ week_end }}</div>
-      <div class="muted">締切：{{ deadline_at }}</div>
-      <div class="muted">{{ "締切後（スタッフ編集不可）" if locked else "締切前（編集OK）" }}</div>
+      <div class="muted">締切なし（いつでも編集OK）</div>
     </div>
     <div style="text-align:right">
       <div><strong>{{ user["name"] }}</strong>（{{ user["role"] }}）</div>

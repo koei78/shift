@@ -445,8 +445,7 @@ def dashboard():
     u = current_user()
     ws = target_week_start()
     dates = week_dates(ws)
-    deadline = deadline_for_target_week(ws)
-    locked = is_locked(ws)
+    locked = False
 
     conn = db()
     sub = conn.execute(
@@ -508,7 +507,6 @@ def dashboard():
         user=u,
         week_start=dates[0],
         week_end=dates[-1],
-        deadline_at=deadline.strftime("%Y-%m-%d %H:%M"),
         locked=locked,
         my_status=status,
         my_projects=my_projects,
@@ -659,16 +657,19 @@ def admin_timeranges_delete():
 @login_required
 def shift_submit():
     u = current_user()
-    # Shift submission targets next week only.
-    ws = target_week_start()
+    # Allow editing any Monday-starting week. Default remains next week.
+    qs = (request.args.get("week_start") or "").strip()
+    if qs:
+        try:
+            ws = monday_of_week(datetime.strptime(qs, "%Y-%m-%d").date())
+        except Exception:
+            ws = target_week_start()
+    else:
+        ws = target_week_start()
     dates = week_dates(ws)
-    deadline = deadline_for_target_week(ws)
-    #locked = is_locked(ws)
-    locked = False  # Deadline locking is currently disabled.
-
-    if locked and u["role"] != "admin" and request.method == "POST":
-        flash("締切後なので編集できません。")
-        return redirect(url_for("shift_submit"))
+    prev_ws = ws - timedelta(days=7)
+    next_ws = ws + timedelta(days=7)
+    locked = False
 
     conn = db()
 
@@ -718,7 +719,7 @@ def shift_submit():
                     flash("不正な時間帯が選択されました")
                     conn.rollback()
                     conn.close()
-                    return redirect(url_for("shift_submit"))
+                    return redirect(url_for("shift_submit", week_start=fmt_date(ws)))
                 if tid in seen:
                     continue
                 filtered.append(tid)
@@ -743,7 +744,7 @@ def shift_submit():
         conn.commit()
         conn.close()
         flash("提出確定！" if status == "submitted" else "下書き保存！")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("shift_team", week_start=fmt_date(ws)))
 
     conn.close()
 
@@ -753,7 +754,8 @@ def shift_submit():
         week_dates=dates,
         week_start=dates[0],
         week_end=dates[-1],
-        deadline_at=deadline.strftime("%Y-%m-%d %H:%M"),
+        prev_week_start=prev_ws,
+        next_week_start=next_ws,
         locked=locked,
         ranges=ranges,
         selected_map=selected_map,
@@ -765,16 +767,17 @@ def shift_team():
     u_current = current_user()
     team_only = request.args.get("team_only") == "1"
     
-    # Default to the current week. week_start selects the Monday-starting week.
+    # Default to the same target week used by shift submission.
+    # week_start selects the Monday-starting week.
     qs = (request.args.get("week_start") or "").strip()
     if qs:
         try:
             ws = datetime.strptime(qs, "%Y-%m-%d").date()
             ws = monday_of_week(ws)
         except Exception:
-            ws = monday_of_week(now_jst().date())
+            ws = target_week_start()
     else:
-        ws = monday_of_week(now_jst().date())
+        ws = target_week_start()
 
     dates = week_dates(ws)
     prev_ws = ws - timedelta(days=7)
@@ -826,6 +829,7 @@ def shift_team():
 
     # Build users_data in Python without additional queries.
     users_data = {}
+    user_shift_counts = {}
     for u in users:
         sub = sub_by_uid.get(u["id"])
         sub_id = sub["id"] if sub else None
@@ -834,8 +838,9 @@ def shift_team():
         for date in dates:
             day_str = date.strftime("%Y-%m-%d")
             for r in ranges:
-                user_date.append("○" if (day_str, r["id"]) in filled else "×")
+                user_date.append((day_str, r["id"]) in filled)
         users_data[u["name"]] = user_date
+        user_shift_counts[u["name"]] = len(filled)
 
     rows = []
     for u in users:
@@ -861,6 +866,7 @@ def shift_team():
         rows=rows,
         range=range,
         users=users_data,
+        user_shift_counts=user_shift_counts,
         user=u_current,
         team_only=team_only,
     )
