@@ -30,13 +30,17 @@
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
   }
 
   .shift-table {
     border-collapse: collapse;
-    width: 100%;
-    table-layout: fixed;
+    width: max-content;
+    min-width: 100%;
+    table-layout: auto;
     background: #fff;
     font-size: 11px;
   }
@@ -50,6 +54,8 @@
     border-right: 2px solid #cbd5e1;
     border-bottom: 1px solid #e2e8f0;
     width: 90px;
+    min-width: 90px;
+    box-sizing: border-box;
     text-align: left;
   }
 
@@ -77,14 +83,18 @@
   .th-slot {
     background: #f1f5f9;
     color: #64748b;
-    font-size: 9px; font-weight: 600;
-    padding: 4px 2px;
+    font-size: 10px; font-weight: 600;
+    padding: 5px 10px;
+    width: 118px;
+    min-width: 118px;
+    max-width: none;
+    box-sizing: border-box;
     text-align: center;
     border-right: 1px solid #e2e8f0;
     border-bottom: 2px solid #cbd5e1;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
   }
   .th-slot.day-end { border-right: 2px solid #cbd5e1; }
   .th-slot.is-sat { background: #e0f2fe; }
@@ -95,6 +105,9 @@
     background: #fff;
     padding: 0 8px;
     height: 40px;
+    width: 90px;
+    min-width: 90px;
+    box-sizing: border-box;
     border-right: 2px solid #cbd5e1;
     border-bottom: 1px solid #f1f5f9;
     vertical-align: middle;
@@ -111,6 +124,9 @@
     border-bottom: 1px solid #e2e8f0;
     border-right: 1px solid #e2e8f0;
     background: #0ea5e9; height: 40px;
+    width: 118px;
+    min-width: 118px;
+    box-sizing: border-box;
   }
   .td-on.day-end { border-right: 2px solid #cbd5e1; }
   .on-badge { display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; }
@@ -120,6 +136,9 @@
     border-bottom: 1px solid #e2e8f0;
     border-right: 1px solid #e2e8f0;
     background: #f4f6f8; height: 40px;
+    width: 118px;
+    min-width: 118px;
+    box-sizing: border-box;
     color: #cbd5e1; font-size: 12px;
   }
   .td-off.day-end { border-right: 2px solid #cbd5e1; }
@@ -213,17 +232,19 @@
     .m-table-wrap {
       overflow-x: auto;
       background: #fff;
+      -webkit-overflow-scrolling: touch;
     }
     .m-table {
       border-collapse: collapse;
-      width: 100%;
-      table-layout: fixed;
-      min-width: 300px;
+      width: max-content;
+      min-width: 100%;
+      table-layout: auto;
     }
     .m-th-user {
       position: sticky; left: 0; z-index: 5;
       background: #f8fafc;
       width: 80px; min-width: 80px;
+      box-sizing: border-box;
       padding: 8px 6px;
       font-size: 10px; font-weight: 700;
       color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em;
@@ -235,13 +256,17 @@
       padding: 7px 3px;
       text-align: center;
       font-size: 10px; font-weight: 600;
+      width: 108px;
+      min-width: 108px;
+      max-width: none;
+      box-sizing: border-box;
       color: #64748b;
       background: #f1f5f9;
       border-right: 1px solid #e2e8f0;
       border-bottom: 2px solid #cbd5e1;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      overflow: visible;
+      text-overflow: clip;
     }
     .m-th-slot.is-sat { background: #e0f2fe; }
     .m-th-slot.is-sun { background: #ffe4e6; }
@@ -251,6 +276,7 @@
       position: sticky; left: 0; z-index: 2;
       background: #fff;
       width: 80px; min-width: 80px;
+      box-sizing: border-box;
       padding: 0 6px;
       height: 44px;
       border-right: 2px solid #cbd5e1;
@@ -264,6 +290,9 @@
       border-right: 1px solid #e2e8f0;
       background: #0ea5e9;
       height: 44px;
+      width: 108px;
+      min-width: 108px;
+      box-sizing: border-box;
       text-align: center; vertical-align: middle;
     }
     .m-td-on i { color: #fff; font-size: 14px; }
@@ -276,6 +305,9 @@
       border-right: 1px solid #e2e8f0;
       background: #f4f6f8;
       height: 44px;
+      width: 108px;
+      min-width: 108px;
+      box-sizing: border-box;
       text-align: center; vertical-align: middle;
       color: #cbd5e1; font-size: 13px;
     }

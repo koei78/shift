@@ -803,8 +803,8 @@ def shift_team():
 
     # time range map (include inactive for display safety)
     ranges = conn.execute("SELECT * FROM time_ranges").fetchall()
-    range=[f'{r["label"]} {r["start"]}-{r["end"]}' for r in ranges]
-    range_map = {r["id"]: f'{r["label"]} {r["start"]}-{r["end"]}' for r in ranges}
+    range=[f'{r["start"]}-{r["end"]}' for r in ranges]
+    range_map = {r["id"]: f'{r["start"]}-{r["end"]}' for r in ranges}
     
     # Fetch all slots in one query.
     sub_ids = [s["id"] for s in subs]
