@@ -23,19 +23,12 @@
 
   .login-header { margin-bottom: 28px; }
 
-  .login-header .login-icon-wrap {
-    width: 56px;
-    height: 56px;
-    background: #e0f2fe;
-    border-radius: 14px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 16px;
-  }
-  .login-header .login-icon-wrap i {
-    font-size: 26px;
-    color: #0ea5e9;
+  .login-logo {
+    width: 128px;
+    height: 128px;
+    object-fit: contain;
+    margin-bottom: 14px;
+    filter: drop-shadow(0 8px 16px rgba(14,165,233,.18));
   }
   .login-header h2 {
     margin: 0 0 4px 0;
@@ -99,9 +92,7 @@
   <div class="login-card">
     
     <div class="login-header">
-      <div class="login-icon-wrap">
-        <i class="fa-solid fa-clipboard-list"></i>
-      </div>
+      <img class="login-logo" src="{{ url_for('static', filename='img/company-logo.webp') }}" alt="株式会社てんかい">
       <h2>株式会社てんかい</h2>
       <p class="muted" style="margin-top: 6px; font-size: 13.5px;">アカウントにログインしてください</p>
     </div>
@@ -109,7 +100,7 @@
     <form method="post">
       <div class="login-form-group">
         <label for="email"><i class="fa-regular fa-envelope"></i> メールアドレス</label>
-        <input id="email" name="email" class="login-input" type="email" placeholder="admin@example.com" required autofocus>
+        <input id="email" name="email" class="login-input" type="email" placeholder="メールアドレス" required autofocus>
       </div>
       
       <div class="login-form-group">
@@ -121,11 +112,6 @@
         ログイン <i class="fa-solid fa-arrow-right-to-bracket" style="margin-left:8px;"></i>
       </button>
 
-      <div class="login-footer">
-        テスト用初期アカｆｆウント:<br>
-        <strong>Email:</strong> admin@example.com<br>
-        <strong>Pass:</strong> admin123
-      </div>
     </form>
     
   </div>

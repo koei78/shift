@@ -61,6 +61,7 @@ db.sqlite3-journal
 
 # SQLite DB (local)
 app.db
+workspace_uploads/
 
 # Flask stuff:
 instance/

@@ -3,7 +3,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, date
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, g
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, g, send_from_directory
+from werkzeug.utils import secure_filename
 
 # .env file loading. Falls back to manual parsing if python-dotenv is unavailable.
 import pathlib
@@ -23,6 +24,8 @@ if _env_path.exists():
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
+WORKSPACE_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "workspace_uploads")
+os.makedirs(WORKSPACE_UPLOAD_DIR, exist_ok=True)
 
 if not DATABASE_URL and not os.environ.get('PG_HOST'):
     raise RuntimeError("DATABASE_URL is not set. Set it to the Supabase PostgreSQL connection string.")
@@ -316,6 +319,32 @@ def init_db():
       FOREIGN KEY(user_id) REFERENCES users(id)
     )
     """)
+    cur.execute(f"""
+    CREATE TABLE IF NOT EXISTS workspace_items (
+      id {PK},
+      title TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'minutes',
+      body TEXT,
+      project_id INTEGER,
+      original_filename TEXT,
+      stored_filename TEXT,
+      file_size INTEGER,
+      created_by INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(created_by) REFERENCES users(id),
+      FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE SET NULL
+    )
+    """)
+    cur.execute("ALTER TABLE workspace_items ADD COLUMN IF NOT EXISTS project_id INTEGER")
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS workspace_item_assignees (
+      item_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      PRIMARY KEY (item_id, user_id),
+      FOREIGN KEY(item_id) REFERENCES workspace_items(id) ON DELETE CASCADE,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """)
     conn.commit()
 
     # Minimal admin seed.
@@ -515,6 +544,224 @@ def dashboard():
         my_schedules=my_schedules,
         my_team_name=my_team_name
     )
+
+
+# -------- Workspace: minutes and shared files --------
+@app.route("/workspace", methods=["GET", "POST"])
+@login_required
+def workspace():
+    u = current_user()
+    categories = {
+        "minutes": "議事録",
+        "file": "ファイル",
+        "notice": "共有メモ",
+    }
+
+    if request.method == "POST":
+        title = (request.form.get("title") or "").strip()
+        category = request.form.get("category") or "minutes"
+        body = (request.form.get("body") or "").strip()
+        project_id = request.form.get("project_id") or None
+        assignee_ids = request.form.getlist("assignee_ids")
+        upload = request.files.get("file")
+
+        if category not in categories:
+            category = "minutes"
+        if not title:
+            flash("タイトルを入力してください")
+            return redirect(url_for("workspace"))
+
+        original_filename = None
+        stored_filename = None
+        file_size = None
+        if upload and upload.filename:
+            original_filename = upload.filename
+            safe_name = secure_filename(original_filename) or "file"
+            stored_filename = f"{now_jst().strftime('%Y%m%d%H%M%S%f')}_{u['id']}_{safe_name}"
+            save_path = os.path.join(WORKSPACE_UPLOAD_DIR, stored_filename)
+            upload.save(save_path)
+            file_size = os.path.getsize(save_path)
+
+        conn = db()
+        inserted = conn.execute(
+            """
+            INSERT INTO workspace_items
+              (title, category, body, project_id, original_filename, stored_filename, file_size, created_by, created_at)
+            VALUES(?,?,?,?,?,?,?,?,?)
+            RETURNING id
+            """,
+            (
+                title,
+                category,
+                body,
+                int(project_id) if project_id else None,
+                original_filename,
+                stored_filename,
+                file_size,
+                u["id"],
+                now_jst().strftime("%Y-%m-%d %H:%M:%S"),
+            ),
+        ).fetchone()
+        item_id = inserted["id"]
+        seen_assignees = set()
+        for assignee_id in assignee_ids:
+            if not assignee_id or assignee_id in seen_assignees:
+                continue
+            seen_assignees.add(assignee_id)
+            conn.execute(
+                "INSERT INTO workspace_item_assignees(item_id, user_id) VALUES(?,?)",
+                (item_id, int(assignee_id)),
+            )
+        conn.commit()
+        conn.close()
+        flash("ワークスペースに追加しました")
+        return redirect(url_for("workspace"))
+
+    category_filter = request.args.get("category") or ""
+    project_filter = request.args.get("project_id") or ""
+    q = (request.args.get("q") or "").strip()
+    params = []
+    where = []
+    if category_filter in categories:
+        where.append("w.category=?")
+        params.append(category_filter)
+    if project_filter:
+        where.append("w.project_id=?")
+        params.append(int(project_filter))
+    if q:
+        where.append("(w.title LIKE ? OR w.body LIKE ? OR w.original_filename LIKE ?)")
+        like = f"%{q}%"
+        params.extend([like, like, like])
+
+    sql = """
+        SELECT w.*, u.name AS creator_name, p.name AS project_name
+        FROM workspace_items w
+        JOIN users u ON u.id=w.created_by
+        LEFT JOIN projects p ON p.id=w.project_id
+    """
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY w.created_at DESC, w.id DESC"
+
+    conn = db()
+    items = conn.execute(sql, tuple(params)).fetchall()
+    users = conn.execute("SELECT id, name FROM users WHERE is_active=1 ORDER BY name").fetchall()
+    projects = conn.execute("SELECT id, name FROM projects ORDER BY name").fetchall()
+    assignees_by_item = {}
+    if items:
+        item_ids = [item["id"] for item in items]
+        placeholders = ",".join(["?"] * len(item_ids))
+        assignees = conn.execute(
+            f"""
+            SELECT wa.item_id, u.id, u.name
+            FROM workspace_item_assignees wa
+            JOIN users u ON u.id=wa.user_id
+            WHERE wa.item_id IN ({placeholders})
+            ORDER BY u.name
+            """,
+            tuple(item_ids),
+        ).fetchall()
+        for assignee in assignees:
+            assignees_by_item.setdefault(assignee["item_id"], []).append(assignee)
+    conn.close()
+    return render_template(
+        "workspace.html",
+        user=u,
+        items=items,
+        assignees_by_item=assignees_by_item,
+        users_list=users,
+        projects=projects,
+        categories=categories,
+        category_filter=category_filter,
+        project_filter=project_filter,
+        q=q,
+    )
+
+
+@app.get("/workspace/<int:item_id>")
+@login_required
+def workspace_detail(item_id):
+    conn = db()
+    item = conn.execute(
+        """
+        SELECT w.*, u.name AS creator_name, p.name AS project_name
+        FROM workspace_items w
+        JOIN users u ON u.id=w.created_by
+        LEFT JOIN projects p ON p.id=w.project_id
+        WHERE w.id=?
+        """,
+        (item_id,),
+    ).fetchone()
+    if not item:
+        conn.close()
+        abort(404)
+    assignees = conn.execute(
+        """
+        SELECT u.id, u.name
+        FROM workspace_item_assignees wa
+        JOIN users u ON u.id=wa.user_id
+        WHERE wa.item_id=?
+        ORDER BY u.name
+        """,
+        (item_id,),
+    ).fetchall()
+    conn.close()
+    return render_template(
+        "workspace_detail.html",
+        user=current_user(),
+        item=item,
+        assignees=assignees,
+        categories={
+            "minutes": "議事録",
+            "file": "ファイル",
+            "notice": "共有メモ",
+        },
+    )
+
+
+@app.get("/workspace/download/<int:item_id>")
+@login_required
+def workspace_download(item_id):
+    conn = db()
+    item = conn.execute("SELECT * FROM workspace_items WHERE id=?", (item_id,)).fetchone()
+    conn.close()
+    if not item or not item["stored_filename"]:
+        abort(404)
+    return send_from_directory(
+        WORKSPACE_UPLOAD_DIR,
+        item["stored_filename"],
+        as_attachment=True,
+        download_name=item["original_filename"] or item["stored_filename"],
+    )
+
+
+@app.post("/workspace/delete")
+@login_required
+def workspace_delete():
+    u = current_user()
+    item_id = request.form.get("id")
+    conn = db()
+    item = conn.execute("SELECT * FROM workspace_items WHERE id=?", (item_id,)).fetchone()
+    if not item:
+        conn.close()
+        abort(404)
+    if u["role"] != "admin" and item["created_by"] != u["id"]:
+        conn.close()
+        abort(403)
+
+    stored_filename = item["stored_filename"]
+    conn.execute("DELETE FROM workspace_item_assignees WHERE item_id=?", (item["id"],))
+    conn.execute("DELETE FROM workspace_items WHERE id=?", (item["id"],))
+    conn.commit()
+    conn.close()
+    if stored_filename:
+        try:
+            os.remove(os.path.join(WORKSPACE_UPLOAD_DIR, stored_filename))
+        except OSError:
+            pass
+    flash("ワークスペースから削除しました")
+    return redirect(url_for("workspace"))
+
 
 # -------- Admin: Users --------
 @app.route("/admin/users", methods=["GET", "POST"])

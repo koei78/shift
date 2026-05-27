@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .detail-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .detail-head h2 { margin: 0; }
+  .detail-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .detail-main { padding: 16px; }
+  .detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    color: #64748b;
+    font-size: 12.5px;
+    margin-top: 8px;
+  }
+  .badge {
+    display: inline-flex;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .body-block {
+    margin-top: 18px;
+    padding: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    white-space: pre-wrap;
+    line-height: 1.65;
+    color: #1e293b;
+  }
+  .detail-section {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+  }
+  .person-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .person-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    border-radius: 9999px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  @media (max-width: 700px) {
+    .detail-head {
+      position: sticky;
+      top: 0;
+      z-index: 12;
+      flex-direction: row;
+      align-items: center;
+      margin: 0 -1px 10px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,.96);
+      border-bottom: 1px solid #e2e8f0;
+      backdrop-filter: blur(10px);
+    }
+    .detail-head .btn {
+      min-height: 36px;
+      padding: 7px 10px;
+    }
+    .detail-card {
+      margin: 0 12px 86px;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, .06);
+    }
+    .detail-main { padding: 14px; }
+    .detail-main h2 {
+      font-size: 20px;
+      line-height: 1.25;
+      margin: 10px 0 0;
+    }
+    .detail-meta {
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .detail-meta span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .body-block {
+      margin-top: 14px;
+      padding: 12px;
+      line-height: 1.6;
+    }
+    .detail-section {
+      margin-top: 14px;
+      padding-top: 12px;
+    }
+    .person-list {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .person-chip {
+      min-height: 34px;
+      border-radius: 8px;
+      justify-content: flex-start;
+    }
+  }
+</style>
+
+<div class="detail-head">
+  <div>
+    <a class="btn" href="{{ url_for('workspace') }}"><i class="fa-solid fa-arrow-left"></i> 一覧へ</a>
+  </div>
+  {% if user["role"] == "admin" or item.created_by == user["id"] %}
+    <form method="post" action="{{ url_for('workspace_delete') }}" onsubmit="return confirm('削除しますか？');">
+      <input type="hidden" name="id" value="{{ item.id }}">
+      <button class="btn" type="submit"><i class="fa-solid fa-trash"></i> 削除</button>
+    </form>
+  {% endif %}
+</div>
+
+<article class="detail-card">
+  <div class="detail-main">
+    <span class="badge">{{ categories.get(item.category, item.category) }}</span>
+    <h2>{{ item.title }}</h2>
+    <div class="detail-meta">
+      <span><i class="fa-regular fa-user"></i> 作成者：{{ item.creator_name }}</span>
+      <span><i class="fa-regular fa-clock"></i> {{ item.created_at }}</span>
+      {% if item.project_name %}
+        <span><i class="fa-solid fa-briefcase"></i> 案件：{{ item.project_name }}</span>
+      {% endif %}
+    </div>
+
+    {% if item.body %}
+      <div class="body-block">{{ item.body }}</div>
+    {% endif %}
+
+    <section class="detail-section">
+      <strong><i class="fa-solid fa-user-check"></i> 担当者</strong>
+      {% if assignees %}
+        <div class="person-list">
+          {% for staff in assignees %}
+            <span class="person-chip"><i class="fa-regular fa-user"></i> {{ staff.name }}</span>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="muted" style="margin-top:8px;">担当者は未設定です。</div>
+      {% endif %}
+    </section>
+
+    {% if item.original_filename %}
+      <section class="detail-section">
+        <strong><i class="fa-solid fa-paperclip"></i> 添付ファイル</strong>
+        <div style="margin-top:8px;">
+          <a class="btn" href="{{ url_for('workspace_download', item_id=item.id) }}">
+            <i class="fa-solid fa-download"></i> {{ item.original_filename }}
+          </a>
+          {% if item.file_size %}
+            <span class="muted">{{ (item.file_size / 1024)|round(1) }}KB</span>
+          {% endif %}
+        </div>
+      </section>
+    {% endif %}
+  </div>
+</article>
+{% endblock %}

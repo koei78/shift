@@ -67,7 +67,7 @@
     .nav-top .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       font-size: 18px;
       font-weight: 700;
       color: #ffffff;
@@ -75,6 +75,12 @@
     }
 
     .nav-top .brand i { color: #ffffff; font-size: 18px; }
+    .brand-logo {
+      width: 46px;
+      height: 46px;
+      object-fit: contain;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.2));
+    }
 
     .nav-top-right { display: flex; align-items: center; gap: 8px; }
 
@@ -448,7 +454,10 @@
 <body>
 <header class="topbar">
   <div class="wrap nav-top">
-    <div class="brand"><i class="fa-solid fa-clipboard-list"></i> 株式会社てんかい</div>
+    <div class="brand">
+      <img class="brand-logo" src="{{ url_for('static', filename='img/company-logo.webp') }}" alt="株式会社てんかい">
+      <span>株式会社てんかい</span>
+    </div>
   
   </div>
 </header>
@@ -460,6 +469,7 @@
         <li><a class="nav-item nav-icon-blue {% if request.endpoint=='dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><i class="fa-solid fa-user"></i><span>個人ページ</span></a></li>
         <li><a class="nav-item nav-icon-green {% if request.endpoint=='team' %}active{% endif %}" href="{{ url_for('team') }}"><i class="fa-solid fa-users"></i><span>チーム一覧</span></a></li>
         <li><a class="nav-item nav-icon-yellow {% if 'project' in request.endpoint %}active{% endif %}" href="{{ url_for('projects') }}"><i class="fa-solid fa-briefcase"></i><span>案件管理</span></a></li>
+        <li><a class="nav-item nav-icon-sky {% if request.endpoint and request.endpoint.startswith('workspace') %}active{% endif %}" href="{{ url_for('workspace') }}"><i class="fa-solid fa-folder-open"></i><span>ワークスペース</span></a></li>
         <li><a class="nav-item nav-icon-purple {% if request.endpoint=='shift_submit' %}active{% endif %}" href="{{ url_for('shift_submit') }}"><i class="fa-solid fa-calendar-check"></i><span>シフト提出</span></a></li>
         <li><a class="nav-item nav-icon-red {% if 'task' in request.endpoint %}active{% endif %}" href="{{ url_for('tasks') }}"><i class="fa-solid fa-list-check"></i><span>タスク</span></a></li>
         <li><a class="nav-item nav-icon-gray" href="#"><i class="fa-solid fa-gear"></i><span>設定</span></a></li>
@@ -525,6 +535,7 @@
   </div>
   <a class="drawer-item {% if request.endpoint=='team' %}active{% endif %}" href="{{ url_for('team') }}"><i class="fa-solid fa-users"></i><span>チーム一覧</span></a>
   <a class="drawer-item {% if request.endpoint=='shift_submit' %}active{% endif %}" href="{{ url_for('shift_submit') }}"><i class="fa-solid fa-calendar-check"></i><span>シフト提出</span></a>
+  <a class="drawer-item {% if request.endpoint and request.endpoint.startswith('workspace') %}active{% endif %}" href="{{ url_for('workspace') }}"><i class="fa-solid fa-folder-open"></i><span>ワークスペース</span></a>
   <a class="drawer-item {% if 'task' in request.endpoint %}active{% endif %}" href="{{ url_for('tasks') }}"><i class="fa-solid fa-list-check"></i><span>タスク</span></a>
   <a class="drawer-item" href="#"><i class="fa-solid fa-gear"></i><span>設定</span></a>
   {% if user["role"]=="admin" %}
